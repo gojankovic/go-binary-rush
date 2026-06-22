@@ -10,7 +10,10 @@ plugins {
 
 val keyPropertiesFile = rootProject.file("key.properties")
 val keyProperties = Properties()
-keyProperties.load(FileInputStream(keyPropertiesFile))
+val hasReleaseSigning = keyPropertiesFile.exists()
+if (hasReleaseSigning) {
+    FileInputStream(keyPropertiesFile).use { keyProperties.load(it) }
+}
 
 android {
     namespace = "com.jankovic.gobinaryrush"
@@ -39,17 +42,27 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            keyAlias = keyProperties["keyAlias"] as String
-            keyPassword = keyProperties["keyPassword"] as String
-            storeFile = file(keyProperties["storeFile"] as String)
-            storePassword = keyProperties["storePassword"] as String
+        if (hasReleaseSigning) {
+            create("release") {
+                keyAlias = keyProperties["keyAlias"] as String
+                keyPassword = keyProperties["keyPassword"] as String
+                storeFile = file(keyProperties["storeFile"] as String)
+                storePassword = keyProperties["storePassword"] as String
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            // Release signing is configured only when android/key.properties exists.
+            // Debug builds never require the private signing credentials. A release
+            // build without credentials falls back to debug signing, which the Play
+            // Store will reject — surfacing the missing file at upload time.
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 }
