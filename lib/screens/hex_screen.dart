@@ -6,6 +6,7 @@ import '../game/score_engine.dart';
 import '../services/haptics.dart';
 import '../widgets/bit_row.dart';
 import '../widgets/new_best_banner.dart';
+import 'success_feedback.dart';
 import '../theme.dart';
 
 Color get _green => AppColors.g4;
@@ -21,7 +22,7 @@ class HexScreen extends StatefulWidget {
 }
 
 class _HexScreenState extends State<HexScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, SuccessFeedback {
   QuestionGenerator? _generator;
   ScoreEngine? _scoreEngine;
   int _target = 0;
@@ -30,9 +31,6 @@ class _HexScreenState extends State<HexScreen>
   bool _solved = false;
   bool _wrong = false;
   bool _loaded = false;
-  double _flashOpacity = 0.0;
-  bool _newBestFlash = false;
-  Timer? _newBestTimer;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnim;
@@ -74,7 +72,6 @@ class _HexScreenState extends State<HexScreen>
 
   @override
   void dispose() {
-    _newBestTimer?.cancel();
     _pulseController.dispose();
     super.dispose();
   }
@@ -116,22 +113,10 @@ class _HexScreenState extends State<HexScreen>
     Haptics.mediumImpact();
     _scoreEngine!.onCorrect();
     _generator!.recordSolved();
-    final newBest = _scoreEngine!.consumeNewBestFlash();
-    setState(() {
-      _solved = true;
-      _flashOpacity = 1.0;
-      if (newBest) _newBestFlash = true;
-    });
-    if (newBest) {
-      _newBestTimer?.cancel();
-      _newBestTimer = Timer(const Duration(milliseconds: 600), () {
-        if (mounted) setState(() => _newBestFlash = false);
-      });
-    }
+    setState(() => _solved = true);
     _pulseController.repeat(reverse: true);
-    Future.delayed(const Duration(milliseconds: 120), () {
-      if (mounted) setState(() => _flashOpacity = 0.0);
-    });
+    // Hex Match waits for a Next tap rather than advancing itself.
+    runSuccessFeedback(newBest: _scoreEngine!.consumeNewBestFlash());
   }
 
   void _onWrong() {
@@ -208,12 +193,12 @@ class _HexScreenState extends State<HexScreen>
           ),
           IgnorePointer(
             child: AnimatedOpacity(
-              opacity: _flashOpacity,
+              opacity: flashOpacity,
               duration: const Duration(milliseconds: 60),
               child: Container(color: const Color(0x2200FF41)),
             ),
           ),
-          NewBestBanner(visible: _newBestFlash),
+          NewBestBanner(visible: newBestFlash),
         ],
       ),
     );

@@ -7,6 +7,7 @@ import '../widgets/bit_row.dart';
 import '../widgets/game_hud.dart';
 import '../widgets/game_pips.dart';
 import '../widgets/new_best_banner.dart';
+import 'success_feedback.dart';
 import '../theme.dart';
 
 Color get _green => AppColors.g4;
@@ -21,7 +22,7 @@ class AdditionScreen extends StatefulWidget {
 }
 
 class _AdditionScreenState extends State<AdditionScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, SuccessFeedback {
   QuestionGenerator? _generator;
   ScoreEngine? _scoreEngine;
   int _target = 0;
@@ -33,12 +34,8 @@ class _AdditionScreenState extends State<AdditionScreen>
   bool _hintAUsed = false;
   bool _hintBOn = false;
   bool _hintBUsed = false;
-  double _flashOpacity = 0.0;
   int _lapSolved = 0;
   int _lastEarned = 0;
-  Timer? _advanceTimer;
-  bool _newBestFlash = false;
-  Timer? _newBestTimer;
 
   static const int _lapSize = GamePips.lapSize;
 
@@ -83,8 +80,6 @@ class _AdditionScreenState extends State<AdditionScreen>
 
   @override
   void dispose() {
-    _advanceTimer?.cancel();
-    _newBestTimer?.cancel();
     _pulseController.dispose();
     super.dispose();
   }
@@ -115,30 +110,19 @@ class _AdditionScreenState extends State<AdditionScreen>
     Haptics.mediumImpact();
     final earned = _scoreEngine!.onCorrect();
     _generator!.recordSolved();
-    final newBest = _scoreEngine!.consumeNewBestFlash();
     setState(() {
       _solved = true;
-      _flashOpacity = 1.0;
       _lastEarned = earned;
-      if (newBest) _newBestFlash = true;
     });
-    if (newBest) {
-      _newBestTimer?.cancel();
-      _newBestTimer = Timer(const Duration(milliseconds: 600), () {
-        if (mounted) setState(() => _newBestFlash = false);
-      });
-    }
     _pulseController.repeat(reverse: true);
-    Future.delayed(const Duration(milliseconds: 120), () {
-      if (mounted) setState(() => _flashOpacity = 0.0);
-    });
-    _advanceTimer = Timer(const Duration(milliseconds: 700), () {
-      if (mounted) _next();
-    });
+    runSuccessFeedback(
+      newBest: _scoreEngine!.consumeNewBestFlash(),
+      onAdvance: _next,
+    );
   }
 
   void _next() {
-    _advanceTimer?.cancel();
+    cancelPendingAdvance();
     _pulseController.stop();
     _pulseController.reset();
     final gen = _generator!;
@@ -222,12 +206,12 @@ class _AdditionScreenState extends State<AdditionScreen>
           ),
           IgnorePointer(
             child: AnimatedOpacity(
-              opacity: _flashOpacity,
+              opacity: flashOpacity,
               duration: const Duration(milliseconds: 60),
               child: Container(color: AppColors.g3.withValues(alpha: 0.13)),
             ),
           ),
-          NewBestBanner(visible: _newBestFlash),
+          NewBestBanner(visible: newBestFlash),
         ],
       ),
     );
