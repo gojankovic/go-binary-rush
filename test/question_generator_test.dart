@@ -73,7 +73,7 @@ void main() {
   });
 
   test(
-    'advances to the 5-bit tier once the cap of solves is reached',
+    'a cap-filling solve advances only on the next generated question',
     () async {
       SharedPreferences.setMockInitialValues({});
       final gen = await QuestionGenerator.create(mode: 'unit', tiers: _tiers);
@@ -83,10 +83,16 @@ void main() {
       gen.next();
       gen.recordSolved();
       gen.next();
-      gen.recordSolved(); // second solve reaches cap (2) -> advance
+      gen.recordSolved(); // cap (2) reached, but the advance is deferred
 
+      // The just-solved question keeps its own tier/bit width while shown.
+      expect(gen.currentTier, 1);
+      expect(gen.currentBits, 4);
+
+      final t = gen.next(); // deferred advance is applied here
       expect(gen.currentTier, 2);
       expect(gen.currentBits, 5);
+      expect([16, 17, 18], contains(t));
     },
   );
 
@@ -112,6 +118,7 @@ void main() {
     gen.recordSolved();
     gen.next();
     gen.recordSolved();
+    gen.next(); // applies and persists the deferred advance
 
     final reopened = await QuestionGenerator.create(
       mode: 'unit',
@@ -133,10 +140,11 @@ void main() {
       gen.next();
       gen.recordSolved();
       gen.next();
-      gen.recordSolved(); // hits cap at the last tier -> seen is cleared
+      gen.recordSolved(); // cap reached at the last tier
 
+      final t = gen.next(); // deferred advance resets the max-tier seen set
       expect(gen.tierSolvedCount, 0);
-      expect([1, 2], contains(gen.next()));
+      expect([1, 2], contains(t));
     },
   );
 }

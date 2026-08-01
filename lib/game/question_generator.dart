@@ -43,10 +43,16 @@ class QuestionGenerator {
   int get tierCap => _tiers[_tierIndex].cap;
 
   /// Produces a target for the current tier. Generating a question never
-  /// advances the tier or records progress: the tier and bit width stay
-  /// stable for the lifetime of the returned question. Call [recordSolved]
-  /// when the player actually solves it.
+  /// records progress: the tier and bit width stay stable for the lifetime
+  /// of the returned question. Call [recordSolved] when the player solves it.
   int next() {
+    // A previous solve that filled the tier's cap advances here — not inside
+    // recordSolved() — so the just-solved question keeps its own tier and bit
+    // width while its success state is still on screen. This is solve-driven:
+    // the seen-set only grows on a solve, never on generation.
+    if (_getSeen().length >= _tiers[_tierIndex].cap) {
+      _advanceTier();
+    }
     var available = _available();
     if (available.isEmpty) {
       // Every target has been shown this session but not enough have been
@@ -70,17 +76,15 @@ class QuestionGenerator {
     return target;
   }
 
-  /// Records the current question as solved. Only a solve advances tier
-  /// progress; once the tier's cap of solved questions is reached the tier
-  /// advances for the next question. Safe to call at most once per question.
+  /// Records the current question as solved. Only a solve counts toward tier
+  /// progress. The tier advance itself is deferred to the next [next] call so
+  /// the solved question keeps its tier/bit width. Safe to call at most once
+  /// per generated question.
   void recordSolved() {
     final target = _currentTarget;
     if (target == null) return;
     _currentTarget = null;
     _markSeen(target);
-    if (_getSeen().length >= _tiers[_tierIndex].cap) {
-      _advanceTier();
-    }
   }
 
   List<int> _available() {
