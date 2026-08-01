@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/crt_settings.dart';
+import '../services/prefs_keys.dart';
 import '../services/haptics.dart';
 import '../services/notifications.dart';
 import '../services/palette_settings.dart';
@@ -30,23 +31,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _load();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _load();
-  }
-
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
-      _playerName = (prefs.getString('player_name') ?? 'PLAYER').toUpperCase();
+      _playerName = (prefs.getString(PrefsKeys.playerName) ?? 'PLAYER')
+          .toUpperCase();
       _reminderEnabled = prefs.getBool(Notifications.prefsEnabled) ?? false;
       _reminderHour =
           prefs.getInt(Notifications.prefsHour) ?? Notifications.defaultHour;
       _hapticsEnabled = prefs.getBool(Haptics.prefsEnabled) ?? true;
-      _crtLevel =
-          prefs.getInt(CrtSettings.prefsLevel) ?? CrtSettings.levelFull;
-      _paletteIndex = prefs.getInt(PaletteSettings.prefsIndex) ??
+      _crtLevel = prefs.getInt(CrtSettings.prefsLevel) ?? CrtSettings.levelFull;
+      _paletteIndex =
+          prefs.getInt(PaletteSettings.prefsIndex) ??
           PaletteSettings.indexGreen;
       _loaded = true;
     });
@@ -102,6 +99,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
     if (picked == null || picked == _reminderHour) return;
+    if (!mounted) return;
     setState(() => _reminderHour = picked);
     await Notifications.setHour(picked, _playerName);
   }
@@ -117,13 +115,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _reminderBusy = false;
         });
         if (!granted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            backgroundColor: AppColors.bg,
-            content: Text(
-              'NOTIFICATION PERMISSION DENIED',
-              style: AppText.mono(size: 12, color: AppColors.amber),
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: AppColors.bg,
+              content: Text(
+                'NOTIFICATION PERMISSION DENIED',
+                style: AppText.mono(size: 12, color: AppColors.amber),
+              ),
             ),
-          ));
+          );
         }
       }
     } else {
@@ -154,19 +154,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: !_loaded
           ? const SizedBox.shrink()
           : ListView(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
               children: [
                 _divider('FEEDBACK'),
                 const SizedBox(height: 14),
-                _toggleRow(
-                  'HAPTICS',
-                  _hapticsEnabled,
-                  (v) async {
-                    setState(() => _hapticsEnabled = v);
-                    await Haptics.setEnabled(v);
-                  },
-                ),
+                _toggleRow('HAPTICS', _hapticsEnabled, (v) async {
+                  setState(() => _hapticsEnabled = v);
+                  await Haptics.setEnabled(v);
+                }),
                 const SizedBox(height: 28),
                 _divider('DISPLAY'),
                 const SizedBox(height: 14),
@@ -194,8 +189,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('PALETTE',
-              style: AppText.mono(size: 12, color: AppColors.g2)),
+          Text('PALETTE', style: AppText.mono(size: 12, color: AppColors.g2)),
           const SizedBox(height: 6),
           Row(
             children: List.generate(PaletteSettings.labels.length, (i) {
@@ -209,13 +203,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                   child: Container(
                     margin: EdgeInsets.only(
-                        right:
-                            i == PaletteSettings.labels.length - 1 ? 0 : 6),
+                      right: i == PaletteSettings.labels.length - 1 ? 0 : 6,
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       border: Border.all(
-                          color: sel ? AppColors.g4 : AppColors.g1),
+                        color: sel ? AppColors.g4 : AppColors.g1,
+                      ),
                       color: sel ? AppColors.g1 : Colors.transparent,
                     ),
                     child: Text(
@@ -242,8 +237,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('CRT INTENSITY',
-              style: AppText.mono(size: 12, color: AppColors.g2)),
+          Text(
+            'CRT INTENSITY',
+            style: AppText.mono(size: 12, color: AppColors.g2),
+          ),
           const SizedBox(height: 6),
           Row(
             children: List.generate(CrtSettings.labels.length, (i) {
@@ -257,12 +254,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   },
                   child: Container(
                     margin: EdgeInsets.only(
-                        right: i == CrtSettings.labels.length - 1 ? 0 : 6),
+                      right: i == CrtSettings.labels.length - 1 ? 0 : 6,
+                    ),
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       border: Border.all(
-                          color: sel ? AppColors.g4 : AppColors.g1),
+                        color: sel ? AppColors.g4 : AppColors.g1,
+                      ),
                       color: sel ? AppColors.g1 : Colors.transparent,
                     ),
                     child: Text(
@@ -290,20 +289,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text('REMINDER TIME',
-              style: AppText.mono(size: 12, color: AppColors.g2)),
+          Text(
+            'REMINDER TIME',
+            style: AppText.mono(size: 12, color: AppColors.g2),
+          ),
           GestureDetector(
             onTap: _pickHour,
             behavior: HitTestBehavior.opaque,
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(border: Border.all(color: AppColors.g2)),
-              child: Text(hh,
-                  style: AppText.mono(
-                      size: 13,
-                      color: AppColors.g4,
-                      weight: FontWeight.w600)),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                border: Border.all(color: AppColors.g2),
+              ),
+              child: Text(
+                hh,
+                style: AppText.mono(
+                  size: 13,
+                  color: AppColors.g4,
+                  weight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
         ],

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,19 +10,35 @@ import 'services/crt_settings.dart';
 import 'services/haptics.dart';
 import 'services/notifications.dart';
 import 'services/palette_settings.dart';
+import 'services/prefs_keys.dart';
 import 'theme.dart';
 import 'widgets/crt_overlay.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   GoogleFonts.config.allowRuntimeFetching = false;
-  Haptics.init();
-  CrtSettings.init();
-  PaletteSettings.init();
-  if (!kIsWeb) {
-    Notifications.init();
-  }
+  await bootstrap();
   runApp(const BinaryRushApp());
+}
+
+/// Loads the preference-backed visual/haptic settings that must be in effect
+/// before the first frame is rendered. Notification setup is intentionally not
+/// awaited so it never delays first paint.
+Future<void> bootstrap() async {
+  await Future.wait([
+    Haptics.init(),
+    CrtSettings.init(),
+    PaletteSettings.init(),
+  ]);
+  if (!kIsWeb) {
+    unawaited(
+      Notifications.init().catchError((Object e, StackTrace s) {
+        // Reminders are optional; a failure here must not take down startup, but
+        // silently dropping it makes "my reminder never fired" undiagnosable.
+        debugPrint('Notifications.init failed: $e\n$s');
+      }),
+    );
+  }
 }
 
 class BinaryRushApp extends StatelessWidget {
@@ -35,7 +53,10 @@ class BinaryRushApp extends StatelessWidget {
           title: 'Go Binary Rush',
           debugShowCheckedModeBanner: false,
           theme: buildAppTheme(),
-          builder: (context, child) => CrtOverlay(child: child!),
+          builder: (context, child) => ColoredBox(
+            color: Colors.black,
+            child: SafeArea(child: CrtOverlay(child: child!)),
+          ),
           home: const _AppRouter(),
         );
       },
@@ -62,7 +83,8 @@ class _AppRouterState extends State<_AppRouter> {
 
   Future<void> _check() async {
     final prefs = await SharedPreferences.getInstance();
-    final name = prefs.getString('player_name');
+    final name = prefs.getString(PrefsKeys.playerName);
+    if (!mounted) return;
     setState(() {
       _needsName = name == null;
       _checked = true;
@@ -73,7 +95,9 @@ class _AppRouterState extends State<_AppRouter> {
   Widget build(BuildContext context) {
     if (!_checked) {
       return const Scaffold(
-          backgroundColor: Colors.black, body: SizedBox.shrink());
+        backgroundColor: Colors.black,
+        body: SizedBox.shrink(),
+      );
     }
     return _needsName ? const NameEntryScreen() : const MainShell();
   }

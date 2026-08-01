@@ -19,40 +19,86 @@ class HexWordKeyboard extends StatelessWidget {
     ['Z', 'X', 'C', 'V', 'B', 'N', 'M'],
   ];
 
+  static const _keyMargin = 2.0;
+  static const _maxKeyWidth = 32.0;
+  static const _keyHeight = 42.0;
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: _keyRows
-          .map((row) => Padding(
-                padding: EdgeInsets.symmetric(vertical: rowPadding),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: row
-                      .map((l) => GestureDetector(
-                            onTap: () => onTap(l),
-                            child: Container(
-                              margin:
-                                  const EdgeInsets.symmetric(horizontal: 2),
-                              width: 32,
-                              height: 42,
-                              decoration: BoxDecoration(
+    // The top row is the widest at ten keys; at the preferred 32px that needs
+    // 360px, which does not fit a 320px phone. Size the keys to the row that
+    // has the most of them so every row stays aligned and nothing overflows.
+    final widestRow = _keyRows
+        .map((r) => r.length)
+        .reduce((a, b) => a > b ? a : b);
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final textScale = MediaQuery.textScalerOf(context).scale(1);
+        final compact = textScale > 1.2;
+        final slot = constraints.maxWidth.isFinite
+            ? constraints.maxWidth / widestRow
+            : _maxKeyWidth + _keyMargin * 2;
+        final keyWidth = (slot - _keyMargin * 2)
+            .clamp(18.0, _maxKeyWidth)
+            .toDouble();
+        final textSize = (keyWidth * 0.375).clamp(9.0, 12.0);
+        final keyHeight = compact ? 36.0 : _keyHeight;
+        final verticalPadding = compact
+            ? rowPadding.clamp(0.0, 1.0)
+            : rowPadding;
+
+        return Column(
+          children: _keyRows
+              .map(
+                (row) => Padding(
+                  padding: EdgeInsets.symmetric(vertical: verticalPadding),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: row
+                        .map(
+                          (l) => Semantics(
+                            button: true,
+                            enabled: !disabled,
+                            label: l,
+                            excludeSemantics: true,
+                            onTap: disabled ? null : () => onTap(l),
+                            child: GestureDetector(
+                              onTap: disabled ? null : () => onTap(l),
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: _keyMargin,
+                                ),
+                                width: keyWidth,
+                                height: keyHeight,
+                                decoration: BoxDecoration(
                                   border: Border.all(
-                                      color: disabled
-                                          ? AppColors.g1
-                                          : AppColors.g2)),
-                              alignment: Alignment.center,
-                              child: Text(l,
+                                    color: disabled
+                                        ? AppColors.g1
+                                        : AppColors.g2,
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  l,
                                   style: AppText.mono(
-                                      size: 12,
-                                      color: disabled
-                                          ? AppColors.g1
-                                          : AppColors.g3)),
+                                    size: textSize,
+                                    color: disabled
+                                        ? AppColors.g1
+                                        : AppColors.g3,
+                                  ),
+                                ),
+                              ),
                             ),
-                          ))
-                      .toList(),
+                          ),
+                        )
+                        .toList(),
+                  ),
                 ),
-              ))
-          .toList(),
+              )
+              .toList(),
+        );
+      },
     );
   }
 }

@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../game/score_engine.dart';
+import '../services/prefs_keys.dart';
 import '../services/haptics.dart';
 import '../game/word_list.dart';
 import '../widgets/game_pips.dart';
@@ -50,9 +51,13 @@ class _HexWordScreenState extends State<HexWordScreen>
   void initState() {
     super.initState();
     _pulseCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 300));
-    _pulseAnim = Tween<double>(begin: 1.0, end: 1.06).animate(
-        CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeOut));
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+    _pulseAnim = Tween<double>(
+      begin: 1.0,
+      end: 1.06,
+    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeOut));
     _init();
   }
 
@@ -72,6 +77,7 @@ class _HexWordScreenState extends State<HexWordScreen>
     ]);
     final score = results[0] as ScoreEngine;
     final prefs = results[1] as SharedPreferences;
+    if (!mounted) return;
     setState(() {
       _score = score;
       _prefs = prefs;
@@ -82,17 +88,20 @@ class _HexWordScreenState extends State<HexWordScreen>
   void _refreshPoolForCurrentRamp() {
     final p = _prefs;
     if (p == null) return;
-    final total = p.getInt('hex_word_total') ?? 0;
-    final ramp = ((total ~/ _wordsPerStep) + _minWordLen)
-        .clamp(_minWordLen, _maxWordLen);
+    final total = p.getInt(PrefsKeys.hexWordTotal) ?? 0;
+    final ramp = ((total ~/ _wordsPerStep) + _minWordLen).clamp(
+      _minWordLen,
+      _maxWordLen,
+    );
     if (ramp == _currentMaxLen && _pool.isNotEmpty) return;
     _currentMaxLen = ramp;
-    _pool = kWordList
-        .where((w) => w.length >= _minWordLen && w.length <= ramp)
-        .toList()
-      ..shuffle(Random());
+    _pool =
+        kWordList
+            .where((w) => w.length >= _minWordLen && w.length <= ramp)
+            .toList()
+          ..shuffle(Random());
     _poolIdx = 0;
-    p.setInt('hex_word_max_len', ramp);
+    p.setInt(PrefsKeys.hexWordMaxLen, ramp);
   }
 
   void _loadWord() {
@@ -157,11 +166,11 @@ class _HexWordScreenState extends State<HexWordScreen>
   void _saveProgress() {
     final p = _prefs;
     if (p == null) return;
-    final total = (p.getInt('hex_word_total') ?? 0) + 1;
-    p.setInt('hex_word_total', total);
+    final total = (p.getInt(PrefsKeys.hexWordTotal) ?? 0) + 1;
+    p.setInt(PrefsKeys.hexWordTotal, total);
     if (!_wrongThisWord) {
-      final perfect = (p.getInt('hex_word_perfect_count') ?? 0) + 1;
-      p.setInt('hex_word_perfect_count', perfect);
+      final perfect = (p.getInt(PrefsKeys.hexWordPerfectCount) ?? 0) + 1;
+      p.setInt(PrefsKeys.hexWordPerfectCount, perfect);
     }
   }
 
@@ -181,7 +190,9 @@ class _HexWordScreenState extends State<HexWordScreen>
   Widget build(BuildContext context) {
     if (_score == null) {
       return const Scaffold(
-          backgroundColor: Colors.black, body: SizedBox.shrink());
+        backgroundColor: Colors.black,
+        body: SizedBox.shrink(),
+      );
     }
     return Scaffold(
       backgroundColor: Colors.black,
@@ -195,46 +206,54 @@ class _HexWordScreenState extends State<HexWordScreen>
           child: Container(height: 1, color: AppColors.g1),
         ),
       ),
-      body: Stack(children: [
-        Column(
+      body: Stack(
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: _hud(),
-          ),
-          Container(height: 1, color: AppColors.g1),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            child: GamePips(lapSolved: _lapSolved, solved: _solved),
-          ),
-          Container(height: 1, color: AppColors.g1),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text('ASCII  HEX', style: AppText.kicker()),
-                  const SizedBox(height: 14),
-                  _hexDisplay(),
-                  const SizedBox(height: 22),
-                  _letterBoxes(),
-                  const SizedBox(height: 14),
-                  SizedBox(height: 18, child: _solved ? _feedback() : null),
-                ],
+          Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
+                child: _hud(),
               ),
-            ),
+              Container(height: 1, color: AppColors.g1),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 8,
+                ),
+                child: GamePips(lapSolved: _lapSolved, solved: _solved),
+              ),
+              Container(height: 1, color: AppColors.g1),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('ASCII  HEX', style: AppText.kicker()),
+                      const SizedBox(height: 14),
+                      _hexDisplay(),
+                      const SizedBox(height: 22),
+                      _letterBoxes(),
+                      const SizedBox(height: 14),
+                      SizedBox(height: 18, child: _solved ? _feedback() : null),
+                    ],
+                  ),
+                ),
+              ),
+              Container(height: 1, color: AppColors.g1),
+              const SizedBox(height: 10),
+              HexWordKeyboard(onTap: _tapLetter, disabled: _solved),
+              const SizedBox(height: 10),
+              _nextButton(),
+              SizedBox(height: MediaQuery.of(context).padding.bottom + 10),
+            ],
           ),
-          Container(height: 1, color: AppColors.g1),
-          const SizedBox(height: 10),
-          HexWordKeyboard(onTap: _tapLetter, disabled: _solved),
-          const SizedBox(height: 10),
-          _nextButton(),
-          SizedBox(height: MediaQuery.of(context).padding.bottom + 10),
+          NewBestBanner(visible: _newBestFlash),
         ],
-        ),
-        NewBestBanner(visible: _newBestFlash),
-      ]),
+      ),
     );
   }
 
@@ -253,9 +272,8 @@ class _HexWordScreenState extends State<HexWordScreen>
 
   Widget _tierCell() {
     final int tierCount = _maxWordLen - _minWordLen + 1;
-    final int tier =
-        (_currentMaxLen - _minWordLen + 1).clamp(1, tierCount);
-    final int total = _prefs?.getInt('hex_word_total') ?? 0;
+    final int tier = (_currentMaxLen - _minWordLen + 1).clamp(1, tierCount);
+    final int total = _prefs?.getInt(PrefsKeys.hexWordTotal) ?? 0;
     final String progress = tier >= tierCount
         ? 'MAX'
         : '${total % _wordsPerStep}/$_wordsPerStep';
@@ -265,8 +283,7 @@ class _HexWordScreenState extends State<HexWordScreen>
         Text('TIER', style: AppText.kicker()),
         const SizedBox(height: 2),
         Text('T$tier', style: AppText.hudValue()),
-        Text(progress,
-            style: AppText.mono(size: 9, color: AppColors.g2)),
+        Text(progress, style: AppText.mono(size: 9, color: AppColors.g2)),
       ],
     );
   }
@@ -288,72 +305,79 @@ class _HexWordScreenState extends State<HexWordScreen>
       spacing: 10,
       runSpacing: 6,
       children: _cachedHexPairs
-          .map((p) => Text(
-                p,
-                style: AppText.mono(
-                    size: 22,
-                    color: AppColors.amber,
-                    weight: FontWeight.w600),
-              ))
+          .map(
+            (p) => Text(
+              p,
+              style: AppText.mono(
+                size: 22,
+                color: AppColors.amber,
+                weight: FontWeight.w600,
+              ),
+            ),
+          )
           .toList(),
     );
   }
 
   Widget _letterBoxes() {
     if (_word.isEmpty) return const SizedBox.shrink();
-    return LayoutBuilder(builder: (ctx, constraints) {
-      final boxSlot =
-          (constraints.maxWidth / _word.length).clamp(0.0, 50.0);
-      final boxW = (boxSlot - 4.0).clamp(0.0, 46.0);
-      final fontSize = (boxW * 0.45).clamp(10.0, 18.0);
+    return LayoutBuilder(
+      builder: (ctx, constraints) {
+        final boxSlot = (constraints.maxWidth / _word.length).clamp(0.0, 50.0);
+        final boxW = (boxSlot - 4.0).clamp(0.0, 46.0);
+        final fontSize = (boxW * 0.45).clamp(10.0, 18.0);
 
-      return ScaleTransition(
-        scale: _pulseAnim,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(_word.length, (i) {
-            final isRevealed = i < _revealed;
-            final isCurrent = i == _revealed && !_solved;
-            final letter = isRevealed ? _word[i].toUpperCase() : '';
+        return ScaleTransition(
+          scale: _pulseAnim,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(_word.length, (i) {
+              final isRevealed = i < _revealed;
+              final isCurrent = i == _revealed && !_solved;
+              final letter = isRevealed ? _word[i].toUpperCase() : '';
 
-            final Color borderColor;
-            final Color textColor;
-            if (isRevealed) {
-              borderColor = AppColors.g3;
-              textColor = AppColors.g4;
-            } else if (isCurrent && _wrongFlash) {
-              borderColor = AppColors.red;
-              textColor = AppColors.red;
-            } else if (isCurrent) {
-              borderColor = AppColors.g2;
-              textColor = AppColors.g2;
-            } else {
-              borderColor = AppColors.g1;
-              textColor = AppColors.g1;
-            }
+              final Color borderColor;
+              final Color textColor;
+              if (isRevealed) {
+                borderColor = AppColors.g3;
+                textColor = AppColors.g4;
+              } else if (isCurrent && _wrongFlash) {
+                borderColor = AppColors.red;
+                textColor = AppColors.red;
+              } else if (isCurrent) {
+                borderColor = AppColors.g2;
+                textColor = AppColors.g2;
+              } else {
+                borderColor = AppColors.g1;
+                textColor = AppColors.g1;
+              }
 
-            return Container(
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              width: boxW,
-              height: 40,
-              decoration: BoxDecoration(
-                border: Border.all(
-                    color: borderColor, width: isCurrent ? 1.5 : 1),
-                boxShadow: isRevealed ? AppGlow.sm : null,
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                letter,
-                style: AppText.mono(
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                width: boxW,
+                height: 40,
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: borderColor,
+                    width: isCurrent ? 1.5 : 1,
+                  ),
+                  boxShadow: isRevealed ? AppGlow.sm : null,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  letter,
+                  style: AppText.mono(
                     size: fontSize,
                     color: textColor,
-                    weight: FontWeight.w700),
-              ),
-            );
-          }),
-        ),
-      );
-    });
+                    weight: FontWeight.w700,
+                  ),
+                ),
+              );
+            }),
+          ),
+        );
+      },
+    );
   }
 
   Widget _feedback() {

@@ -8,7 +8,10 @@ class Tier {
 final List<Tier> kHexTiers = () {
   final t2 = {for (int i = 1; i <= 15; i++) i * 16};
   final t3 = {for (int i = 1; i <= 15; i++) i * 17};
-  final t4 = [for (int i = 16; i <= 255; i++) if (!t2.contains(i) && !t3.contains(i)) i];
+  final t4 = [
+    for (int i = 16; i <= 255; i++)
+      if (!t2.contains(i) && !t3.contains(i)) i,
+  ];
   return [
     Tier(bits: 4, targets: List.generate(15, (i) => i + 1), cap: 10),
     Tier(bits: 8, targets: (t2.toList()..sort()), cap: 8),

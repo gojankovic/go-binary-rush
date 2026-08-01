@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../game/binary.dart';
 import '../game/question_generator.dart';
 import '../game/score_engine.dart';
 import '../services/haptics.dart';
@@ -8,6 +9,7 @@ import '../widgets/game_hud.dart';
 import '../widgets/game_pips.dart';
 import '../widgets/new_best_banner.dart';
 import '../widgets/num_pad.dart';
+import 'success_feedback.dart';
 import '../theme.dart';
 
 Color get _green => AppColors.g4;
@@ -23,7 +25,7 @@ class ReverseScreen extends StatefulWidget {
 }
 
 class _ReverseScreenState extends State<ReverseScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, SuccessFeedback {
   QuestionGenerator? _generator;
   ScoreEngine? _scoreEngine;
   int _target = 0;
@@ -31,12 +33,8 @@ class _ReverseScreenState extends State<ReverseScreen>
   bool _solved = false;
   bool _wrong = false;
   bool _loaded = false;
-  double _flashOpacity = 0.0;
   int _lapSolved = 0;
   int _lastEarned = 0;
-  Timer? _advanceTimer;
-  bool _newBestFlash = false;
-  Timer? _newBestTimer;
 
   static const int _lapSize = GamePips.lapSize;
 
@@ -69,31 +67,29 @@ class _ReverseScreenState extends State<ReverseScreen>
     final gen = results[0] as QuestionGenerator;
     final score = results[1] as ScoreEngine;
     final target = gen.next();
+    if (!mounted) return;
     setState(() {
       _generator = gen;
       _scoreEngine = score;
       _target = target;
-      _bits = _toBits(target, gen.currentBits);
+      _bits = intToBits(target, gen.currentBits);
       _loaded = true;
     });
   }
 
   @override
   void dispose() {
-    _advanceTimer?.cancel();
-    _newBestTimer?.cancel();
     _pulseController.dispose();
     super.dispose();
   }
-
-  List<int> _toBits(int value, int numBits) =>
-      List.generate(numBits, (i) => (value >> (numBits - 1 - i)) & 1);
 
   void _tapDigit(String d) {
     if (_solved) return;
     if (d == '⌫') {
       if (_inputEntry.isNotEmpty) {
-        setState(() => _inputEntry = _inputEntry.substring(0, _inputEntry.length - 1));
+        setState(
+          () => _inputEntry = _inputEntry.substring(0, _inputEntry.length - 1),
+        );
       }
       return;
     }
@@ -104,7 +100,10 @@ class _ReverseScreenState extends State<ReverseScreen>
       _onCorrect();
     } else if (next.length >= _target.toString().length) {
       _scoreEngine!.onWrong();
-      setState(() { _wrong = true; _inputEntry = ''; });
+      setState(() {
+        _wrong = true;
+        _inputEntry = '';
+      });
       Future.delayed(const Duration(milliseconds: 700), () {
         if (mounted) setState(() => _wrong = false);
       });
@@ -116,37 +115,27 @@ class _ReverseScreenState extends State<ReverseScreen>
   void _onCorrect() {
     Haptics.mediumImpact();
     final earned = _scoreEngine!.onCorrect();
-    final newBest = _scoreEngine!.consumeNewBestFlash();
+    _generator!.recordSolved();
     setState(() {
       _solved = true;
-      _flashOpacity = 1.0;
       _lastEarned = earned;
-      if (newBest) _newBestFlash = true;
     });
-    if (newBest) {
-      _newBestTimer?.cancel();
-      _newBestTimer = Timer(const Duration(milliseconds: 600), () {
-        if (mounted) setState(() => _newBestFlash = false);
-      });
-    }
     _pulseController.repeat(reverse: true);
-    Future.delayed(const Duration(milliseconds: 120), () {
-      if (mounted) setState(() => _flashOpacity = 0.0);
-    });
-    _advanceTimer = Timer(const Duration(milliseconds: 700), () {
-      if (mounted) _next();
-    });
+    runSuccessFeedback(
+      newBest: _scoreEngine!.consumeNewBestFlash(),
+      onAdvance: _next,
+    );
   }
 
   void _next() {
-    _advanceTimer?.cancel();
+    cancelPendingAdvance();
     _pulseController.stop();
     _pulseController.reset();
     final gen = _generator!;
     final target = gen.next();
     setState(() {
       _target = target;
-      _bits = _toBits(target, gen.currentBits);
+      _bits = intToBits(target, gen.currentBits);
       _solved = false;
       _wrong = false;
       _inputEntry = '';
@@ -172,8 +161,10 @@ class _ReverseScreenState extends State<ReverseScreen>
         backgroundColor: Colors.black,
         elevation: 0,
         iconTheme: IconThemeData(color: _dimGreen),
-        title: Text('GO BINARY RUSH',
-            style: TextStyle(color: _green, fontSize: 15, letterSpacing: 4)),
+        title: Text(
+          'GO BINARY RUSH',
+          style: TextStyle(color: _green, fontSize: 15, letterSpacing: 4),
+        ),
         centerTitle: false,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
@@ -193,35 +184,49 @@ class _ReverseScreenState extends State<ReverseScreen>
                     const SizedBox(height: 12),
                     GamePips(lapSolved: _lapSolved, solved: _solved),
                     const SizedBox(height: 16),
-                    Text('DECODE', style: AppText.kicker(color: AppColors.g2)
-                        .copyWith(letterSpacing: 5)),
+                    Text(
+                      'DECODE',
+                      style: AppText.kicker(
+                        color: AppColors.g2,
+                      ).copyWith(letterSpacing: 5),
+                    ),
                     const SizedBox(height: 16),
                     BitRow(bits: _bits, onToggle: (_) {}, enabled: false),
                   ],
                 ),
               ),
+              // The entry block is the only part with slack: on a short phone
+              // the HUD, bit row and keypad together leave it less room than
+              // its natural height, so scale it down instead of overflowing.
               Expanded(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('DECIMAL VALUE?',
-                        style: AppText.kicker(color: AppColors.g2)
-                            .copyWith(letterSpacing: 3)),
-                    const SizedBox(height: 12),
-                    _valueDisplay(),
-                    const SizedBox(height: 8),
-                    AnimatedOpacity(
-                      opacity: _wrong ? 1.0 : 0.0,
-                      duration: const Duration(milliseconds: 100),
-                      child: Text('WRONG',
-                          style: AppText.mono(size: 13, color: _red)
-                              .copyWith(letterSpacing: 5)),
-                    ),
-                    if (_solved) ...[
-                      const SizedBox(height: 16),
-                      _feedback(),
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'DECIMAL VALUE?',
+                        style: AppText.kicker(
+                          color: AppColors.g2,
+                        ).copyWith(letterSpacing: 3),
+                      ),
+                      const SizedBox(height: 12),
+                      _valueDisplay(),
+                      const SizedBox(height: 8),
+                      AnimatedOpacity(
+                        opacity: _wrong ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 100),
+                        child: Text(
+                          'WRONG',
+                          style: AppText.mono(
+                            size: 13,
+                            color: _red,
+                          ).copyWith(letterSpacing: 5),
+                        ),
+                      ),
+                      if (_solved) ...[const SizedBox(height: 16), _feedback()],
                     ],
-                  ],
+                  ),
                 ),
               ),
               NumPad(onTap: _tapDigit, disabled: _solved),
@@ -230,12 +235,12 @@ class _ReverseScreenState extends State<ReverseScreen>
           ),
           IgnorePointer(
             child: AnimatedOpacity(
-              opacity: _flashOpacity,
+              opacity: flashOpacity,
               duration: const Duration(milliseconds: 60),
               child: Container(color: AppColors.g3.withValues(alpha: 0.13)),
             ),
           ),
-          NewBestBanner(visible: _newBestFlash),
+          NewBestBanner(visible: newBestFlash),
         ],
       ),
     );
@@ -274,10 +279,14 @@ class _ReverseScreenState extends State<ReverseScreen>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 12),
             decoration: BoxDecoration(border: Border.all(color: AppColors.g2)),
-            child: Text('NEXT  →',
-                style: AppText.mono(size: 13, color: AppColors.g3,
-                    weight: FontWeight.w600)
-                    .copyWith(letterSpacing: 4)),
+            child: Text(
+              'NEXT  →',
+              style: AppText.mono(
+                size: 13,
+                color: AppColors.g3,
+                weight: FontWeight.w600,
+              ).copyWith(letterSpacing: 4),
+            ),
           ),
         ),
       ],

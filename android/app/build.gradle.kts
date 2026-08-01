@@ -10,7 +10,10 @@ plugins {
 
 val keyPropertiesFile = rootProject.file("key.properties")
 val keyProperties = Properties()
-keyProperties.load(FileInputStream(keyPropertiesFile))
+val hasReleaseSigning = keyPropertiesFile.exists()
+if (hasReleaseSigning) {
+    FileInputStream(keyPropertiesFile).use { keyProperties.load(it) }
+}
 
 android {
     namespace = "com.jankovic.gobinaryrush"
@@ -39,17 +42,52 @@ android {
     }
 
     signingConfigs {
-        create("release") {
-            keyAlias = keyProperties["keyAlias"] as String
-            keyPassword = keyProperties["keyPassword"] as String
-            storeFile = file(keyProperties["storeFile"] as String)
-            storePassword = keyProperties["storePassword"] as String
+        if (hasReleaseSigning) {
+            create("release") {
+                keyAlias = keyProperties["keyAlias"] as String
+                keyPassword = keyProperties["keyPassword"] as String
+                storeFile = file(keyProperties["storeFile"] as String)
+                storePassword = keyProperties["storePassword"] as String
+            }
         }
     }
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("release")
+            // Release signing is configured only when android/key.properties exists.
+            // Debug builds never require the private signing credentials. When the
+            // file is absent the release config is left unsigned and an explicit
+            // release build is failed fast below rather than silently producing a
+            // debug-signed (Play-rejected) artifact.
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                null
+            }
+        }
+    }
+}
+
+// Fail an explicitly requested release build when signing credentials are missing,
+// instead of emitting an unsigned/debug-signed artifact. Debug builds are unaffected.
+// Note: taskGraph.whenReady is not configuration-cache compatible. Flutter does not
+// enable the configuration cache by default; if it is ever turned on, replace this
+// with a doFirst check on the release packaging tasks.
+if (!hasReleaseSigning) {
+    gradle.taskGraph.whenReady {
+        val buildingRelease = allTasks.any { task ->
+            val name = task.name
+            name.contains("Release") &&
+                (name.startsWith("assemble") ||
+                    name.startsWith("bundle") ||
+                    name.startsWith("package"))
+        }
+        if (buildingRelease) {
+            throw GradleException(
+                "Release build requested but android/key.properties is missing. " +
+                    "Provide signing credentials (keyAlias, keyPassword, storeFile, " +
+                    "storePassword) to build a release artifact."
+            )
         }
     }
 }

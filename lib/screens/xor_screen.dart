@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../game/binary.dart';
 import '../game/question_generator.dart';
 import '../game/score_engine.dart';
 import '../services/haptics.dart';
@@ -8,6 +9,7 @@ import '../widgets/bit_row.dart';
 import '../widgets/game_hud.dart';
 import '../widgets/game_pips.dart';
 import '../widgets/new_best_banner.dart';
+import 'success_feedback.dart';
 import '../theme.dart';
 
 Color get _green => AppColors.g4;
@@ -22,7 +24,7 @@ class XorScreen extends StatefulWidget {
 }
 
 class _XorScreenState extends State<XorScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, SuccessFeedback {
   final Random _random = Random();
 
   QuestionGenerator? _generator;
@@ -33,12 +35,8 @@ class _XorScreenState extends State<XorScreen>
   int _xorTarget = 0;
   bool _solved = false;
   bool _loaded = false;
-  double _flashOpacity = 0.0;
   int _lapSolved = 0;
   int _lastEarned = 0;
-  Timer? _advanceTimer;
-  bool _newBestFlash = false;
-  Timer? _newBestTimer;
 
   static const int _lapSize = GamePips.lapSize;
 
@@ -69,6 +67,7 @@ class _XorScreenState extends State<XorScreen>
     ]);
     final gen = results[0] as QuestionGenerator;
     final score = results[1] as ScoreEngine;
+    if (!mounted) return;
     setState(() {
       _generator = gen;
       _scoreEngine = score;
@@ -79,8 +78,6 @@ class _XorScreenState extends State<XorScreen>
 
   @override
   void dispose() {
-    _advanceTimer?.cancel();
-    _newBestTimer?.cancel();
     _pulseController.dispose();
     super.dispose();
   }
@@ -94,22 +91,11 @@ class _XorScreenState extends State<XorScreen>
     final b = a ^ xorTarget;
     setState(() {
       _xorTarget = xorTarget;
-      _bitsA = _toBits(a, bits);
-      _bitsB = _toBits(b, bits);
+      _bitsA = intToBits(a, bits);
+      _bitsB = intToBits(b, bits);
       _bitsC = List.filled(bits, 0);
       _solved = false;
     });
-  }
-
-  List<int> _toBits(int value, int numBits) =>
-      List.generate(numBits, (i) => (value >> (numBits - 1 - i)) & 1);
-
-  int _computeValue(List<int> bits) {
-    int val = 0;
-    for (int i = 0; i < bits.length; i++) {
-      val += bits[i] * (1 << (bits.length - 1 - i));
-    }
-    return val;
   }
 
   void _toggleC(int index) {
@@ -118,36 +104,26 @@ class _XorScreenState extends State<XorScreen>
     final newC = List<int>.from(_bitsC);
     newC[index] = newC[index] == 0 ? 1 : 0;
     setState(() => _bitsC = newC);
-    if (_computeValue(newC) == _xorTarget) _triggerSuccess();
+    if (bitsToInt(newC) == _xorTarget) _triggerSuccess();
   }
 
   void _triggerSuccess() {
     Haptics.mediumImpact();
     final earned = _scoreEngine!.onCorrect();
-    final newBest = _scoreEngine!.consumeNewBestFlash();
+    _generator!.recordSolved();
     setState(() {
       _solved = true;
-      _flashOpacity = 1.0;
       _lastEarned = earned;
-      if (newBest) _newBestFlash = true;
     });
-    if (newBest) {
-      _newBestTimer?.cancel();
-      _newBestTimer = Timer(const Duration(milliseconds: 600), () {
-        if (mounted) setState(() => _newBestFlash = false);
-      });
-    }
     _pulseController.repeat(reverse: true);
-    Future.delayed(const Duration(milliseconds: 120), () {
-      if (mounted) setState(() => _flashOpacity = 0.0);
-    });
-    _advanceTimer = Timer(const Duration(milliseconds: 700), () {
-      if (mounted) _next();
-    });
+    runSuccessFeedback(
+      newBest: _scoreEngine!.consumeNewBestFlash(),
+      onAdvance: _next,
+    );
   }
 
   void _next() {
-    _advanceTimer?.cancel();
+    cancelPendingAdvance();
     _pulseController.stop();
     _pulseController.reset();
     setState(() => _lapSolved = (_lapSolved + 1) % _lapSize);
@@ -165,7 +141,7 @@ class _XorScreenState extends State<XorScreen>
 
     final score = _scoreEngine!;
     final gen = _generator!;
-    final valC = _computeValue(_bitsC);
+    final valC = bitsToInt(_bitsC);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -173,8 +149,10 @@ class _XorScreenState extends State<XorScreen>
         backgroundColor: Colors.black,
         elevation: 0,
         iconTheme: IconThemeData(color: _dimGreen),
-        title: Text('GO BINARY RUSH',
-            style: TextStyle(color: _green, fontSize: 15, letterSpacing: 4)),
+        title: Text(
+          'GO BINARY RUSH',
+          style: TextStyle(color: _green, fontSize: 15, letterSpacing: 4),
+        ),
         centerTitle: false,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
@@ -192,9 +170,12 @@ class _XorScreenState extends State<XorScreen>
                 const Spacer(),
                 GamePips(lapSolved: _lapSolved, solved: _solved),
                 const SizedBox(height: 20),
-                Text('A  ⊕  B  =  C',
-                    style: AppText.kicker(color: AppColors.g2)
-                        .copyWith(letterSpacing: 4, fontSize: 13)),
+                Text(
+                  'A  ⊕  B  =  C',
+                  style: AppText.kicker(
+                    color: AppColors.g2,
+                  ).copyWith(letterSpacing: 4, fontSize: 13),
+                ),
                 const SizedBox(height: 28),
                 _fixedRow(label: 'A', bits: _bitsA),
                 const SizedBox(height: 8),
@@ -209,12 +190,12 @@ class _XorScreenState extends State<XorScreen>
           ),
           IgnorePointer(
             child: AnimatedOpacity(
-              opacity: _flashOpacity,
+              opacity: flashOpacity,
               duration: const Duration(milliseconds: 60),
               child: Container(color: AppColors.g3.withValues(alpha: 0.13)),
             ),
           ),
-          NewBestBanner(visible: _newBestFlash),
+          NewBestBanner(visible: newBestFlash),
         ],
       ),
     );
@@ -243,7 +224,14 @@ class _XorScreenState extends State<XorScreen>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const SizedBox(width: 28),
-          Container(height: 1, width: 260, color: _muteGreen),
+          // Sits at the bit-row width where there is room, and shrinks rather
+          // than overflowing on a narrow phone.
+          Flexible(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 260),
+              child: Container(height: 1, color: _muteGreen),
+            ),
+          ),
         ],
       ),
     );
@@ -274,8 +262,9 @@ class _XorScreenState extends State<XorScreen>
         Text(
           '= $valC',
           style: AppText.mono(
-              size: 18,
-              color: _solved ? AppColors.g4 : AppColors.g2),
+            size: 18,
+            color: _solved ? AppColors.g4 : AppColors.g2,
+          ),
         ),
       ],
     );
@@ -301,10 +290,14 @@ class _XorScreenState extends State<XorScreen>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 12),
             decoration: BoxDecoration(border: Border.all(color: AppColors.g2)),
-            child: Text('NEXT  →',
-                style: AppText.mono(
-                    size: 13, color: AppColors.g3, weight: FontWeight.w600)
-                    .copyWith(letterSpacing: 4)),
+            child: Text(
+              'NEXT  →',
+              style: AppText.mono(
+                size: 13,
+                color: AppColors.g3,
+                weight: FontWeight.w600,
+              ).copyWith(letterSpacing: 4),
+            ),
           ),
         ),
       ],

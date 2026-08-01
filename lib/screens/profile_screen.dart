@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme.dart';
+import '../services/prefs_keys.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -27,50 +28,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _load();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _load();
-  }
+  static const _modeLabels = {
+    GameModes.match: 'MATCH',
+    GameModes.reverse: 'REVERSE',
+    GameModes.addition: 'ADDITION',
+    GameModes.xor: 'XOR',
+    GameModes.hex: 'HEX MATCH',
+    GameModes.hexWord: 'HEX WORD',
+  };
+
+  static const _speedModeLabels = {
+    GameModes.speedMatch: 'MATCH',
+    GameModes.speedReverse: 'REVERSE',
+    GameModes.speedAddition: 'ADDITION',
+    GameModes.speedXor: 'XOR',
+    GameModes.speedHexWord: 'HEX WORD',
+  };
+
+  static Map<String, int> _read(
+    SharedPreferences prefs,
+    Map<String, String> labels,
+    String Function(String) key,
+  ) => {
+    for (final entry in labels.entries)
+      entry.value: prefs.getInt(key(entry.key)) ?? 0,
+  };
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
-      _playerName   = (prefs.getString('player_name') ?? 'PLAYER').toUpperCase();
-      _totalCorrect = prefs.getInt('total_correct') ?? 0;
-      _bestStreak   = prefs.getInt('best_streak_ever') ?? 0;
-      _tier         = (prefs.getInt('match_current_tier') ?? 0) + 1;
-      _dailyStreak  = prefs.getInt('daily_streak') ?? 0;
-      _bests = {
-        'MATCH':    prefs.getInt('match_high_score') ?? 0,
-        'REVERSE':  prefs.getInt('reverse_high_score') ?? 0,
-        'ADDITION': prefs.getInt('addition_high_score') ?? 0,
-        'XOR':      prefs.getInt('xor_high_score') ?? 0,
-        'HEX MATCH':prefs.getInt('hex_high_score') ?? 0,
-        'HEX WORD': prefs.getInt('hex_word_high_score') ?? 0,
-      };
-      _counts = {
-        'MATCH':    prefs.getInt('match_correct_count') ?? 0,
-        'REVERSE':  prefs.getInt('reverse_correct_count') ?? 0,
-        'ADDITION': prefs.getInt('addition_correct_count') ?? 0,
-        'XOR':      prefs.getInt('xor_correct_count') ?? 0,
-        'HEX MATCH':prefs.getInt('hex_correct_count') ?? 0,
-        'HEX WORD': prefs.getInt('hex_word_correct_count') ?? 0,
-      };
-      _speedBests = {
-        'MATCH':    prefs.getInt('speed_match_high_score') ?? 0,
-        'REVERSE':  prefs.getInt('speed_reverse_high_score') ?? 0,
-        'ADDITION': prefs.getInt('speed_addition_high_score') ?? 0,
-        'XOR':      prefs.getInt('speed_xor_high_score') ?? 0,
-        'HEX WORD': prefs.getInt('speed_hexWord_high_score') ?? 0,
-      };
-      _speedCounts = {
-        'MATCH':    prefs.getInt('speed_match_correct_count') ?? 0,
-        'REVERSE':  prefs.getInt('speed_reverse_correct_count') ?? 0,
-        'ADDITION': prefs.getInt('speed_addition_correct_count') ?? 0,
-        'XOR':      prefs.getInt('speed_xor_correct_count') ?? 0,
-        'HEX WORD': prefs.getInt('speed_hexWord_correct_count') ?? 0,
-      };
+      _playerName = (prefs.getString(PrefsKeys.playerName) ?? 'PLAYER')
+          .toUpperCase();
+      _totalCorrect = prefs.getInt(PrefsKeys.totalCorrect) ?? 0;
+      _bestStreak = prefs.getInt(PrefsKeys.bestStreakEver) ?? 0;
+      _tier = (prefs.getInt(PrefsKeys.currentTier(GameModes.match)) ?? 0) + 1;
+      _dailyStreak = prefs.getInt(PrefsKeys.dailyStreak) ?? 0;
+      // Map order is the display order of the stat rows.
+      _bests = _read(prefs, _modeLabels, PrefsKeys.highScore);
+      _counts = _read(prefs, _modeLabels, PrefsKeys.correctCount);
+      _speedBests = _read(prefs, _speedModeLabels, PrefsKeys.highScore);
+      _speedCounts = _read(prefs, _speedModeLabels, PrefsKeys.correctCount);
       _loaded = true;
     });
   }
@@ -106,23 +104,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 const SizedBox(height: 28),
                 _divider('DAILY'),
                 const SizedBox(height: 14),
-                _statRow('DAILY STREAK', _dailyStreak > 0 ? '×$_dailyStreak' : '—'),
+                _statRow(
+                  'DAILY STREAK',
+                  _dailyStreak > 0 ? '×$_dailyStreak' : '—',
+                ),
                 const SizedBox(height: 28),
                 _divider('BEST SCORES'),
                 const SizedBox(height: 14),
-                ..._bests.entries.map((e) => _statRow(
-                      e.key,
-                      e.value > 0 ? '${e.value}' : '—',
-                      subtitle: _countSubtitle(_counts[e.key] ?? 0),
-                    )),
+                ..._bests.entries.map(
+                  (e) => _statRow(
+                    e.key,
+                    e.value > 0 ? '${e.value}' : '—',
+                    subtitle: _countSubtitle(_counts[e.key] ?? 0),
+                  ),
+                ),
                 const SizedBox(height: 28),
                 _divider('SPEED BURST'),
                 const SizedBox(height: 14),
-                ..._speedBests.entries.map((e) => _statRow(
-                      e.key,
-                      e.value > 0 ? '${e.value}' : '—',
-                      subtitle: _countSubtitle(_speedCounts[e.key] ?? 0),
-                    )),
+                ..._speedBests.entries.map(
+                  (e) => _statRow(
+                    e.key,
+                    e.value > 0 ? '${e.value}' : '—',
+                    subtitle: _countSubtitle(_speedCounts[e.key] ?? 0),
+                  ),
+                ),
               ],
             ),
     );
@@ -135,9 +140,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         Text('AGENT', style: AppText.kicker(color: AppColors.g2)),
         const SizedBox(width: 14),
-        Text(_playerName,
-            style: AppText.mono(
-                size: 22, color: AppColors.g4, weight: FontWeight.w700)),
+        Text(
+          _playerName,
+          style: AppText.mono(
+            size: 22,
+            color: AppColors.g4,
+            weight: FontWeight.w700,
+          ),
+        ),
       ],
     );
   }
@@ -157,7 +167,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         Text(label, style: AppText.kicker()),
         const SizedBox(height: 6),
-        Text(value, style: AppText.hudValue(color: AppColors.g4).copyWith(fontSize: 28)),
+        Text(
+          value,
+          style: AppText.hudValue(color: AppColors.g4).copyWith(fontSize: 28),
+        ),
       ],
     );
   }
@@ -176,7 +189,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: ClipRRect(
                 child: Container(
                   height: 6,
-                  decoration: BoxDecoration(border: Border.all(color: AppColors.g1)),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppColors.g1),
+                  ),
                   child: FractionallySizedBox(
                     alignment: Alignment.centerLeft,
                     widthFactor: progress,
@@ -191,17 +206,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(width: 10),
-            Text('T$totalTiers', style: AppText.mono(size: 13, color: AppColors.g2)),
+            Text(
+              'T$totalTiers',
+              style: AppText.mono(size: 13, color: AppColors.g2),
+            ),
           ],
         ),
         if (_tier < totalTiers) ...[
           const SizedBox(height: 6),
-          Text('TIER $_tier OF $totalTiers',
-              style: AppText.kicker(color: AppColors.g1).copyWith(letterSpacing: 2)),
+          Text(
+            'TIER $_tier OF $totalTiers',
+            style: AppText.kicker(
+              color: AppColors.g1,
+            ).copyWith(letterSpacing: 2),
+          ),
         ] else ...[
           const SizedBox(height: 6),
-          Text('MAX TIER REACHED',
-              style: AppText.kicker(color: AppColors.g4).copyWith(letterSpacing: 2)),
+          Text(
+            'MAX TIER REACHED',
+            style: AppText.kicker(
+              color: AppColors.g4,
+            ).copyWith(letterSpacing: 2),
+          ),
         ],
       ],
     );
@@ -233,18 +259,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(label, style: AppText.mono(size: 12, color: AppColors.g2)),
-              Text(value,
-                  style: AppText.mono(
-                      size: 13,
-                      color: value == '—' ? AppColors.g1 : AppColors.g3,
-                      weight: FontWeight.w600)),
+              Text(
+                value,
+                style: AppText.mono(
+                  size: 13,
+                  color: value == '—' ? AppColors.g1 : AppColors.g3,
+                  weight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
           if (subtitle != null) ...[
             const SizedBox(height: 2),
-            Text(subtitle,
-                style: AppText.kicker(color: AppColors.g1)
-                    .copyWith(letterSpacing: 2)),
+            Text(
+              subtitle,
+              style: AppText.kicker(
+                color: AppColors.g1,
+              ).copyWith(letterSpacing: 2),
+            ),
           ],
         ],
       ),

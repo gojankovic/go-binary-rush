@@ -1,11 +1,13 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../game/binary.dart';
 import '../game/difficulty.dart';
 import '../game/question_generator.dart';
 import '../game/score_engine.dart';
 import '../services/haptics.dart';
 import '../widgets/bit_row.dart';
 import '../widgets/new_best_banner.dart';
+import 'success_feedback.dart';
 import '../theme.dart';
 
 Color get _green => AppColors.g4;
@@ -21,7 +23,7 @@ class HexScreen extends StatefulWidget {
 }
 
 class _HexScreenState extends State<HexScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, SuccessFeedback {
   QuestionGenerator? _generator;
   ScoreEngine? _scoreEngine;
   int _target = 0;
@@ -30,9 +32,6 @@ class _HexScreenState extends State<HexScreen>
   bool _solved = false;
   bool _wrong = false;
   bool _loaded = false;
-  double _flashOpacity = 0.0;
-  bool _newBestFlash = false;
-  Timer? _newBestTimer;
 
   late AnimationController _pulseController;
   late Animation<double> _pulseAnim;
@@ -62,26 +61,23 @@ class _HexScreenState extends State<HexScreen>
     final gen = results[0] as QuestionGenerator;
     final score = results[1] as ScoreEngine;
     final target = gen.next();
+    if (!mounted) return;
     setState(() {
       _generator = gen;
       _scoreEngine = score;
       _target = target;
-      _bits = _toBits(target, gen.currentBits);
+      _bits = intToBits(target, gen.currentBits);
       _loaded = true;
     });
   }
 
   @override
   void dispose() {
-    _newBestTimer?.cancel();
     _pulseController.dispose();
     super.dispose();
   }
 
   bool get _is4bit => _generator!.currentBits == 4;
-
-  List<int> _toBits(int value, int numBits) =>
-      List.generate(numBits, (i) => (value >> (numBits - 1 - i)) & 1);
 
   String _h(int val) => val.toRadixString(16).toUpperCase();
 
@@ -114,22 +110,11 @@ class _HexScreenState extends State<HexScreen>
   void _triggerSuccess() {
     Haptics.mediumImpact();
     _scoreEngine!.onCorrect();
-    final newBest = _scoreEngine!.consumeNewBestFlash();
-    setState(() {
-      _solved = true;
-      _flashOpacity = 1.0;
-      if (newBest) _newBestFlash = true;
-    });
-    if (newBest) {
-      _newBestTimer?.cancel();
-      _newBestTimer = Timer(const Duration(milliseconds: 600), () {
-        if (mounted) setState(() => _newBestFlash = false);
-      });
-    }
+    _generator!.recordSolved();
+    setState(() => _solved = true);
     _pulseController.repeat(reverse: true);
-    Future.delayed(const Duration(milliseconds: 120), () {
-      if (mounted) setState(() => _flashOpacity = 0.0);
-    });
+    // Hex Match waits for a Next tap rather than advancing itself.
+    runSuccessFeedback(newBest: _scoreEngine!.consumeNewBestFlash());
   }
 
   void _onWrong() {
@@ -151,7 +136,7 @@ class _HexScreenState extends State<HexScreen>
     final target = gen.next();
     setState(() {
       _target = target;
-      _bits = _toBits(target, gen.currentBits);
+      _bits = intToBits(target, gen.currentBits);
       _highEntry = null;
       _solved = false;
       _wrong = false;
@@ -206,12 +191,12 @@ class _HexScreenState extends State<HexScreen>
           ),
           IgnorePointer(
             child: AnimatedOpacity(
-              opacity: _flashOpacity,
+              opacity: flashOpacity,
               duration: const Duration(milliseconds: 60),
               child: Container(color: const Color(0x2200FF41)),
             ),
           ),
-          NewBestBanner(visible: _newBestFlash),
+          NewBestBanner(visible: newBestFlash),
         ],
       ),
     );
@@ -227,21 +212,27 @@ class _HexScreenState extends State<HexScreen>
         const SizedBox(height: 12),
         if (_is4bit)
           BitRow(
-              bits: _bits, onToggle: (_) {}, enabled: false, glowing: _solved)
+            bits: _bits,
+            onToggle: (_) {},
+            enabled: false,
+            glowing: _solved,
+          )
         else
           Column(
             children: [
               BitRow(
-                  bits: _bits.sublist(0, 4),
-                  onToggle: (_) {},
-                  enabled: false,
-                  glowing: _solved),
+                bits: _bits.sublist(0, 4),
+                onToggle: (_) {},
+                enabled: false,
+                glowing: _solved,
+              ),
               const SizedBox(height: 8),
               BitRow(
-                  bits: _bits.sublist(4),
-                  onToggle: (_) {},
-                  enabled: false,
-                  glowing: _solved),
+                bits: _bits.sublist(4),
+                onToggle: (_) {},
+                enabled: false,
+                glowing: _solved,
+              ),
             ],
           ),
       ],
@@ -250,10 +241,7 @@ class _HexScreenState extends State<HexScreen>
 
   Widget _answerSlots() {
     if (_is4bit) {
-      return _slot(
-        _solved ? _h(_target) : null,
-        highlight: _solved,
-      );
+      return _slot(_solved ? _h(_target) : null, highlight: _solved);
     }
 
     final hi = _solved
@@ -316,9 +304,7 @@ class _HexScreenState extends State<HexScreen>
             opacity: _pulseAnim,
             child: Text(
               '= $hexStr',
-              style:
-                  TextStyle(fontSize: 22, color: _green, letterSpacing: 4),
-
+              style: TextStyle(fontSize: 22, color: _green, letterSpacing: 4),
             ),
           ),
         ),
@@ -337,13 +323,11 @@ class _HexScreenState extends State<HexScreen>
         GestureDetector(
           onTap: _next,
           child: Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 36, vertical: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 14),
             decoration: BoxDecoration(border: Border.all(color: _green)),
             child: Text(
               'NEXT  →',
-              style:
-                  TextStyle(fontSize: 15, color: _green, letterSpacing: 5),
+              style: TextStyle(fontSize: 15, color: _green, letterSpacing: 5),
             ),
           ),
         ),
@@ -381,8 +365,7 @@ class _HexScreenState extends State<HexScreen>
         decoration: BoxDecoration(border: Border.all(color: _dimGreen)),
         child: Text(
           label,
-          style: TextStyle(
-              fontSize: 16, color: _green, letterSpacing: 1),
+          style: TextStyle(fontSize: 16, color: _green, letterSpacing: 1),
         ),
       ),
     );
@@ -392,10 +375,10 @@ class _HexScreenState extends State<HexScreen>
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        _tierStat(gen),
-        _stat('SCORE', '${score.score}'),
-        _stat('STREAK', '×${score.streak}'),
-        _stat('BEST', '${score.highScore}'),
+        Expanded(child: _tierStat(gen)),
+        Expanded(child: _stat('SCORE', '${score.score}')),
+        Expanded(child: _stat('STREAK', '×${score.streak}')),
+        Expanded(child: _stat('BEST', '${score.highScore}')),
       ],
     );
   }
@@ -404,16 +387,23 @@ class _HexScreenState extends State<HexScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text('TIER',
-            style:
-                TextStyle(fontSize: 9, color: _dimGreen, letterSpacing: 2)),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            'TIER',
+            maxLines: 1,
+            style: TextStyle(fontSize: 9, color: _dimGreen, letterSpacing: 2),
+          ),
+        ),
         const SizedBox(height: 2),
-        Text('T${gen.currentTier}',
-            style: TextStyle(
-                fontSize: 14, color: _green, letterSpacing: 1)),
-        Text('${gen.tierSolvedCount}/${gen.tierCap}',
-            style: TextStyle(
-                fontSize: 8, color: _dimGreen, letterSpacing: 1)),
+        Text(
+          'T${gen.currentTier}',
+          style: TextStyle(fontSize: 14, color: _green, letterSpacing: 1),
+        ),
+        Text(
+          '${gen.tierSolvedCount}/${gen.tierCap}',
+          style: TextStyle(fontSize: 8, color: _dimGreen, letterSpacing: 1),
+        ),
       ],
     );
   }
@@ -422,13 +412,19 @@ class _HexScreenState extends State<HexScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Text(label,
-            style: TextStyle(
-                fontSize: 9, color: _dimGreen, letterSpacing: 2)),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            label,
+            maxLines: 1,
+            style: TextStyle(fontSize: 9, color: _dimGreen, letterSpacing: 2),
+          ),
+        ),
         const SizedBox(height: 2),
-        Text(value,
-            style: TextStyle(
-                fontSize: 14, color: _green, letterSpacing: 1)),
+        Text(
+          value,
+          style: TextStyle(fontSize: 14, color: _green, letterSpacing: 1),
+        ),
       ],
     );
   }

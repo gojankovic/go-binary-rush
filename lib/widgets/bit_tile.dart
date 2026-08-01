@@ -9,15 +9,23 @@ Color get _inactiveText => AppColors.g2;
 class BitTile extends StatefulWidget {
   final int value;
   final VoidCallback onTap;
+  final bool enabled;
   final bool glowing;
   final double size;
+
+  /// What this tile is called to a screen reader. [BitRow] passes the bit's
+  /// place value, which is the only thing that distinguishes one tile from
+  /// the next.
+  final String semanticLabel;
 
   const BitTile({
     super.key,
     required this.value,
     required this.onTap,
+    this.enabled = true,
     this.glowing = false,
     this.size = 64,
+    this.semanticLabel = 'bit',
   });
 
   @override
@@ -32,11 +40,26 @@ class _BitTileState extends State<BitTile> {
     final bool on = widget.value == 1;
     final double fontSize = widget.size * 0.47;
 
+    return Semantics(
+      button: widget.enabled,
+      enabled: widget.enabled ? true : null,
+      toggled: widget.enabled ? on : null,
+      label: widget.semanticLabel,
+      value: on ? '1' : '0',
+      onTap: widget.enabled ? widget.onTap : null,
+      excludeSemantics: true,
+      child: _tile(on, fontSize),
+    );
+  }
+
+  Widget _tile(bool on, double fontSize) {
     return GestureDetector(
-      onTapDown: (_) => setState(() => _pressed = true),
-      onTapUp: (_) => setState(() => _pressed = false),
-      onTapCancel: () => setState(() => _pressed = false),
-      onTap: widget.onTap,
+      onTapDown: widget.enabled ? (_) => setState(() => _pressed = true) : null,
+      onTapUp: widget.enabled ? (_) => setState(() => _pressed = false) : null,
+      onTapCancel: widget.enabled
+          ? () => setState(() => _pressed = false)
+          : null,
+      onTap: widget.enabled ? widget.onTap : null,
       child: AnimatedScale(
         scale: _pressed ? 0.82 : 1.0,
         duration: const Duration(milliseconds: 70),

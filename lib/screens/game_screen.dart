@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../game/binary.dart';
 import '../game/question_generator.dart';
 import '../game/score_engine.dart';
 import '../services/haptics.dart';
@@ -7,6 +8,7 @@ import '../widgets/bit_row.dart';
 import '../widgets/game_hud.dart';
 import '../widgets/game_pips.dart';
 import '../widgets/new_best_banner.dart';
+import 'success_feedback.dart';
 import '../theme.dart';
 
 Color get _green => AppColors.g4;
@@ -20,7 +22,7 @@ class GameScreen extends StatefulWidget {
 }
 
 class _GameScreenState extends State<GameScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, SuccessFeedback {
   QuestionGenerator? _generator;
   ScoreEngine? _scoreEngine;
   int _target = 0;
@@ -30,12 +32,8 @@ class _GameScreenState extends State<GameScreen>
   bool _hintOn = false;
   bool _hintUsed = false;
   int? _lastToggled;
-  double _flashOpacity = 0.0;
   int _lapSolved = 0;
   int _lastEarned = 0;
-  Timer? _advanceTimer;
-  bool _newBestFlash = false;
-  Timer? _newBestTimer;
 
   static const int _lapSize = 10;
 
@@ -66,6 +64,7 @@ class _GameScreenState extends State<GameScreen>
     ]);
     final gen = results[0] as QuestionGenerator;
     final score = results[1] as ScoreEngine;
+    if (!mounted) return;
     setState(() {
       _generator = gen;
       _scoreEngine = score;
@@ -77,18 +76,8 @@ class _GameScreenState extends State<GameScreen>
 
   @override
   void dispose() {
-    _advanceTimer?.cancel();
-    _newBestTimer?.cancel();
     _pulseController.dispose();
     super.dispose();
-  }
-
-  int _computeValue(List<int> bits) {
-    int val = 0;
-    for (int i = 0; i < bits.length; i++) {
-      val += bits[i] * (1 << (bits.length - 1 - i));
-    }
-    return val;
   }
 
   void _toggleBit(int index) {
@@ -100,36 +89,26 @@ class _GameScreenState extends State<GameScreen>
       _bits = newBits;
       _lastToggled = index;
     });
-    if (_computeValue(newBits) == _target) _triggerSuccess();
+    if (bitsToInt(newBits) == _target) _triggerSuccess();
   }
 
   void _triggerSuccess() {
     Haptics.mediumImpact();
     final earned = _scoreEngine!.onCorrect();
-    final newBest = _scoreEngine!.consumeNewBestFlash();
+    _generator!.recordSolved();
     setState(() {
       _solved = true;
-      _flashOpacity = 1.0;
       _lastEarned = earned;
-      if (newBest) _newBestFlash = true;
     });
-    if (newBest) {
-      _newBestTimer?.cancel();
-      _newBestTimer = Timer(const Duration(milliseconds: 600), () {
-        if (mounted) setState(() => _newBestFlash = false);
-      });
-    }
     _pulseController.repeat(reverse: true);
-    Future.delayed(const Duration(milliseconds: 120), () {
-      if (mounted) setState(() => _flashOpacity = 0.0);
-    });
-    _advanceTimer = Timer(const Duration(milliseconds: 700), () {
-      if (mounted) _next();
-    });
+    runSuccessFeedback(
+      newBest: _scoreEngine!.consumeNewBestFlash(),
+      onAdvance: _next,
+    );
   }
 
   void _next() {
-    _advanceTimer?.cancel();
+    cancelPendingAdvance();
     _pulseController.stop();
     _pulseController.reset();
     final gen = _generator!;
@@ -205,12 +184,12 @@ class _GameScreenState extends State<GameScreen>
           ),
           IgnorePointer(
             child: AnimatedOpacity(
-              opacity: _flashOpacity,
+              opacity: flashOpacity,
               duration: const Duration(milliseconds: 60),
               child: Container(color: AppColors.g3.withValues(alpha: 0.13)),
             ),
           ),
-          NewBestBanner(visible: _newBestFlash),
+          NewBestBanner(visible: newBestFlash),
         ],
       ),
     );
@@ -235,8 +214,8 @@ class _GameScreenState extends State<GameScreen>
         final color = isLive
             ? AppColors.amber
             : isOn
-                ? AppColors.g4
-                : AppColors.g1;
+            ? AppColors.g4
+            : AppColors.g1;
         return SizedBox(
           width: _tileWidth(n),
           child: Text(
@@ -264,7 +243,9 @@ class _GameScreenState extends State<GameScreen>
       },
       child: Text(
         '[ HINT  ·  −2 ]',
-        style: AppText.kicker(color: AppColors.amber).copyWith(letterSpacing: 3),
+        style: AppText.kicker(
+          color: AppColors.amber,
+        ).copyWith(letterSpacing: 3),
       ),
     );
   }
@@ -276,36 +257,43 @@ class _GameScreenState extends State<GameScreen>
       final weight = 1 << (n - 1 - i);
       final isOn = _bits[i] == 1;
       if (i > 0) {
-        parts.add(Text(' + ',
-            style: AppText.mono(size: 11, color: AppColors.g1)));
+        parts.add(
+          Text(' + ', style: AppText.mono(size: 11, color: AppColors.g1)),
+        );
       }
-      parts.add(Text(
-        '${_bits[i]}·$weight',
-        style: AppText.mono(size: 11, color: isOn ? AppColors.g4 : AppColors.g1),
-      ));
+      parts.add(
+        Text(
+          '${_bits[i]}·$weight',
+          style: AppText.mono(
+            size: 11,
+            color: isOn ? AppColors.g4 : AppColors.g1,
+          ),
+        ),
+      );
     }
-    final value = _computeValue(_bits);
+    final value = bitsToInt(_bits);
     final sumColor = _solved
         ? AppColors.g5
         : value == _target
-            ? AppColors.g4
-            : AppColors.g2;
+        ? AppColors.g4
+        : AppColors.g2;
     parts.add(Text(' = ', style: AppText.mono(size: 11, color: AppColors.g1)));
-    parts.add(Text(
-      '$value',
-      style: AppText.mono(size: 14, color: sumColor, weight: FontWeight.w700),
-    ));
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: parts,
+    parts.add(
+      Text(
+        '$value',
+        style: AppText.mono(size: 14, color: sumColor, weight: FontWeight.w700),
+      ),
     );
+    return Row(mainAxisAlignment: MainAxisAlignment.center, children: parts);
   }
 
   Widget _targetDisplay() {
     return Column(
       children: [
-        Text('TARGET', style: AppText.kicker(color: AppColors.g2)
-            .copyWith(letterSpacing: 5)),
+        Text(
+          'TARGET',
+          style: AppText.kicker(color: AppColors.g2).copyWith(letterSpacing: 5),
+        ),
         const SizedBox(height: 8),
         Text('$_target', style: AppText.bigTarget()),
       ],
@@ -335,10 +323,14 @@ class _GameScreenState extends State<GameScreen>
               decoration: BoxDecoration(
                 border: Border.all(color: AppColors.g2),
               ),
-              child: Text('NEXT  →',
-                  style: AppText.mono(size: 13, color: AppColors.g3,
-                      weight: FontWeight.w600)
-                      .copyWith(letterSpacing: 4)),
+              child: Text(
+                'NEXT  →',
+                style: AppText.mono(
+                  size: 13,
+                  color: AppColors.g3,
+                  weight: FontWeight.w600,
+                ).copyWith(letterSpacing: 4),
+              ),
             ),
           ),
         ],
