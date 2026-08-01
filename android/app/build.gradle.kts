@@ -55,14 +55,36 @@ android {
     buildTypes {
         release {
             // Release signing is configured only when android/key.properties exists.
-            // Debug builds never require the private signing credentials. A release
-            // build without credentials falls back to debug signing, which the Play
-            // Store will reject — surfacing the missing file at upload time.
+            // Debug builds never require the private signing credentials. When the
+            // file is absent the release config is left unsigned and an explicit
+            // release build is failed fast below rather than silently producing a
+            // debug-signed (Play-rejected) artifact.
             signingConfig = if (hasReleaseSigning) {
                 signingConfigs.getByName("release")
             } else {
-                signingConfigs.getByName("debug")
+                null
             }
+        }
+    }
+}
+
+// Fail an explicitly requested release build when signing credentials are missing,
+// instead of emitting an unsigned/debug-signed artifact. Debug builds are unaffected.
+if (!hasReleaseSigning) {
+    gradle.taskGraph.whenReady {
+        val buildingRelease = allTasks.any { task ->
+            val name = task.name
+            name.contains("Release") &&
+                (name.startsWith("assemble") ||
+                    name.startsWith("bundle") ||
+                    name.startsWith("package"))
+        }
+        if (buildingRelease) {
+            throw GradleException(
+                "Release build requested but android/key.properties is missing. " +
+                    "Provide signing credentials (keyAlias, keyPassword, storeFile, " +
+                    "storePassword) to build a release artifact."
+            )
         }
     }
 }
