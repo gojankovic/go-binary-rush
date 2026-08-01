@@ -12,12 +12,18 @@ class BitTile extends StatefulWidget {
   final bool glowing;
   final double size;
 
+  /// What this tile is called to a screen reader. [BitRow] passes the bit's
+  /// place value, which is the only thing that distinguishes one tile from
+  /// the next.
+  final String semanticLabel;
+
   const BitTile({
     super.key,
     required this.value,
     required this.onTap,
     this.glowing = false,
     this.size = 64,
+    this.semanticLabel = 'bit',
   });
 
   @override
@@ -32,6 +38,18 @@ class _BitTileState extends State<BitTile> {
     final bool on = widget.value == 1;
     final double fontSize = widget.size * 0.47;
 
+    return Semantics(
+      button: true,
+      toggled: on,
+      label: widget.semanticLabel,
+      value: on ? '1' : '0',
+      onTap: widget.onTap,
+      excludeSemantics: true,
+      child: _tile(on, fontSize),
+    );
+  }
+
+  Widget _tile(bool on, double fontSize) {
     return GestureDetector(
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) => setState(() => _pressed = false),

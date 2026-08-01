@@ -77,12 +77,14 @@ class _TerminalDock extends StatelessWidget {
           child: Row(
             children: [
               for (int i = 0; i < _tabs.length; i++)
-                Expanded(child: _DockTab(
-                  ico: _tabs[i].$1,
-                  label: _tabs[i].$2,
-                  active: active == i,
-                  onTap: () => onTap(i),
-                )),
+                Expanded(
+                  child: _DockTab(
+                    ico: _tabs[i].$1,
+                    label: _tabs[i].$2,
+                    active: active == i,
+                    onTap: () => onTap(i),
+                  ),
+                ),
             ],
           ),
         ),
@@ -107,22 +109,39 @@ class _DockTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = active ? AppColors.g4 : AppColors.g2;
-    return GestureDetector(
+    return Semantics(
+      button: true,
+      selected: active,
+      label: label,
+      excludeSemantics: true,
       onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(ico,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              ico,
               style: TextStyle(
                 fontSize: 16,
                 color: color,
-                shadows: active ? AppGlow.sm.map((s) =>
-                    Shadow(color: s.color, blurRadius: s.blurRadius)).toList() : null,
-              )),
-          const SizedBox(height: 3),
-          Text(label, style: AppText.kicker(color: color)),
-        ],
+                shadows: active
+                    ? AppGlow.sm
+                          .map(
+                            (s) => Shadow(
+                              color: s.color,
+                              blurRadius: s.blurRadius,
+                            ),
+                          )
+                          .toList()
+                    : null,
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(label, style: AppText.kicker(color: color)),
+          ],
+        ),
       ),
     );
   }

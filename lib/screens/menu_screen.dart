@@ -212,7 +212,16 @@ class _ModeItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    // Read as one control: the row's parts are meaningless apart, and the
+    // leading "[3]" would otherwise be announced as its own line of text.
+    return Semantics(
+      button: true,
+      label: best == null || best == 0
+          ? '$name, $sub'
+          : '$name, $sub, best $best',
+      excludeSemantics: true,
+      onTap: onTap,
+      child: GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Padding(
@@ -249,6 +258,7 @@ class _ModeItem extends StatelessWidget {
             ],
           ],
         ),
+      ),
       ),
     );
   }

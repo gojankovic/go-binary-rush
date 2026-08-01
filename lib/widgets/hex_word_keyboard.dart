@@ -51,25 +51,36 @@ class HexWordKeyboard extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: row
                         .map(
-                          (l) => GestureDetector(
-                            onTap: () => onTap(l),
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: _keyMargin,
-                              ),
-                              width: keyWidth,
-                              height: _keyHeight,
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: disabled ? AppColors.g1 : AppColors.g2,
+                          (l) => Semantics(
+                            button: true,
+                            enabled: !disabled,
+                            label: l,
+                            excludeSemantics: true,
+                            onTap: disabled ? null : () => onTap(l),
+                            child: GestureDetector(
+                              onTap: () => onTap(l),
+                              child: Container(
+                                margin: const EdgeInsets.symmetric(
+                                  horizontal: _keyMargin,
                                 ),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                l,
-                                style: AppText.mono(
-                                  size: textSize,
-                                  color: disabled ? AppColors.g1 : AppColors.g3,
+                                width: keyWidth,
+                                height: _keyHeight,
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: disabled
+                                        ? AppColors.g1
+                                        : AppColors.g2,
+                                  ),
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  l,
+                                  style: AppText.mono(
+                                    size: textSize,
+                                    color: disabled
+                                        ? AppColors.g1
+                                        : AppColors.g3,
+                                  ),
                                 ),
                               ),
                             ),

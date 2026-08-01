@@ -52,6 +52,7 @@ class BitRow extends StatelessWidget {
                 onTap: enabled ? () => onToggle(i) : () {},
                 glowing: glowing,
                 size: ts,
+                semanticLabel: 'bit worth ${1 << (n - 1 - i)}',
               ),
             ),
           ),
