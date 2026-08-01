@@ -147,4 +147,39 @@ void main() {
       expect([1, 2], contains(t));
     },
   );
+
+  test('skips past several already-exhausted tiers', () async {
+    // Legacy data: two consecutive tiers have every target solved while their
+    // caps were never reached, so the cap guard alone cannot move past them.
+    SharedPreferences.setMockInitialValues({
+      'legacy_seen_tier_0': ['1', '2'],
+      'legacy_seen_tier_1': ['16', '17'],
+    });
+    final gen = await QuestionGenerator.create(
+      mode: 'legacy',
+      tiers: [
+        const Tier(bits: 4, targets: [1, 2], cap: 9),
+        const Tier(bits: 5, targets: [16, 17], cap: 9),
+        const Tier(bits: 6, targets: [32, 33], cap: 9),
+      ],
+    );
+
+    final t = gen.next();
+    expect([32, 33], contains(t));
+    expect(gen.currentTier, 3);
+    expect(gen.currentBits, 6);
+  });
+
+  test('reports a tier whose targets are all below minTarget', () async {
+    SharedPreferences.setMockInitialValues({});
+    final gen = await QuestionGenerator.create(
+      mode: 'misconfigured',
+      tiers: [
+        const Tier(bits: 4, targets: [1, 2], cap: 2),
+      ],
+      minTarget: 8,
+    );
+
+    expect(gen.next, throwsStateError);
+  });
 }

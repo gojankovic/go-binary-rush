@@ -60,15 +60,18 @@ class QuestionGenerator {
       _sessionSeen.clear();
       available = _available();
     }
-    if (available.isEmpty) {
-      // Safety net: the persisted solved-set fills the whole tier (e.g. legacy
-      // data). Advance so we can keep generating instead of looping forever.
+    // Safety net: the persisted solved-set fills the whole tier (e.g. legacy
+    // data). Keep advancing until a tier has room. This terminates because
+    // _advanceTier() clears the solved-set once at the last tier.
+    for (var i = 0; available.isEmpty && i < _tiers.length; i++) {
       _advanceTier();
+      _sessionSeen.clear();
       available = _available();
-      if (available.isEmpty) {
-        _sessionSeen.clear();
-        available = _available();
-      }
+    }
+    if (available.isEmpty) {
+      throw StateError(
+          'No target available in tier ${_tierIndex + 1}: every target is '
+          'below minTarget $_minTarget.');
     }
     final target = available[_random.nextInt(available.length)];
     _sessionSeen.add(target);
