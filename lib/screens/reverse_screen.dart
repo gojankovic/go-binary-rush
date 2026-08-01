@@ -202,8 +202,13 @@ class _ReverseScreenState extends State<ReverseScreen>
                   ],
                 ),
               ),
+              // The entry block is the only part with slack: on a short phone
+              // the HUD, bit row and keypad together leave it less room than
+              // its natural height, so scale it down instead of overflowing.
               Expanded(
-                child: Column(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text('DECIMAL VALUE?',
@@ -224,6 +229,7 @@ class _ReverseScreenState extends State<ReverseScreen>
                       _feedback(),
                     ],
                   ],
+                  ),
                 ),
               ),
               NumPad(onTap: _tapDigit, disabled: _solved),

@@ -414,16 +414,22 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
               style: TextStyle(
                   color: _green, fontSize: 13, letterSpacing: 1)),
           const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(m.label,
-                  style: TextStyle(
-                      color: _green, fontSize: 15, letterSpacing: 3)),
-              Text(m.subtitle,
-                  style: TextStyle(
-                      color: _dimGreen, fontSize: 10, letterSpacing: 1)),
-            ],
+          // The longest subtitle ("row_a + row_b = target") does not fit a
+          // narrow phone unless the label column can give way.
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(m.label,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        color: _green, fontSize: 15, letterSpacing: 3)),
+                Text(m.subtitle,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        color: _dimGreen, fontSize: 10, letterSpacing: 1)),
+              ],
+            ),
           ),
         ],
       ),

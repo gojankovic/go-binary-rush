@@ -245,7 +245,14 @@ class _XorScreenState extends State<XorScreen>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const SizedBox(width: 28),
-          Container(height: 1, width: 260, color: _muteGreen),
+          // Sits at the bit-row width where there is room, and shrinks rather
+          // than overflowing on a narrow phone.
+          Flexible(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 260),
+              child: Container(height: 1, color: _muteGreen),
+            ),
+          ),
         ],
       ),
     );

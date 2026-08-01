@@ -100,7 +100,12 @@ class ReferenceScreen extends StatelessWidget {
         final bitStr = bits.join('');
         return SizedBox(
           width: 130,
-          child: Row(
+          // The cell width is fixed so the columns line up; scale the row down
+          // rather than overflow it when the glyphs are wider than assumed.
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(
             children: [
               Text(bitStr,
                   style: TextStyle(
@@ -110,6 +115,7 @@ class ReferenceScreen extends StatelessWidget {
               Text('$i',
                   style: TextStyle(fontSize: 15, color: _green)),
             ],
+            ),
           ),
         );
       }),
@@ -126,15 +132,19 @@ class ReferenceScreen extends StatelessWidget {
         final char = String.fromCharCode(code);
         return SizedBox(
           width: 68,
-          child: Row(
-            children: [
-              Text(hex,
-                  style: TextStyle(
-                      fontSize: 13, color: _yellow, letterSpacing: 1)),
-              Text('  $char',
-                  style: TextStyle(
-                      fontSize: 13, color: _green, letterSpacing: 1)),
-            ],
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              children: [
+                Text(hex,
+                    style: TextStyle(
+                        fontSize: 13, color: _yellow, letterSpacing: 1)),
+                Text('  $char',
+                    style: TextStyle(
+                        fontSize: 13, color: _green, letterSpacing: 1)),
+              ],
+            ),
           ),
         );
       }),

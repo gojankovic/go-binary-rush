@@ -953,6 +953,19 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
   // ── Shared widgets ─────────────────────────────────────────────
 
   Widget _progressGrid() {
+    // Ten cells at the preferred 24px plus margins need 300px, more than a
+    // 320px phone leaves after the page padding. Shrink the cells to fit.
+    return LayoutBuilder(builder: (context, constraints) {
+      const margin = 3.0;
+      final slot = constraints.maxWidth.isFinite
+          ? constraints.maxWidth / _total
+          : 24.0 + margin * 2;
+      final cell = (slot - margin * 2).clamp(14.0, 24.0).toDouble();
+      return _progressRow(cell, margin);
+    });
+  }
+
+  Widget _progressRow(double cell, double margin) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: List.generate(_total, (i) {
@@ -1005,9 +1018,9 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
         }
 
         return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 3),
-          width: 24,
-          height: 24,
+          margin: EdgeInsets.symmetric(horizontal: margin),
+          width: cell,
+          height: cell,
           decoration: BoxDecoration(
             border: Border.all(color: borderColor),
             color: bgColor,

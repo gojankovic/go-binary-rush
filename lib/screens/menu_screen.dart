@@ -171,8 +171,14 @@ class _MenuScreenState extends State<MenuScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text('WELCOME BACK',
-              style: AppText.kicker(color: AppColors.g2).copyWith(letterSpacing: 3)),
+          // Yields to the tier badge rather than overflowing when the text is
+          // wider than assumed (large system text scale).
+          Flexible(
+            child: Text('WELCOME BACK',
+                overflow: TextOverflow.ellipsis,
+                style: AppText.kicker(color: AppColors.g2)
+                    .copyWith(letterSpacing: 3)),
+          ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
