@@ -11,6 +11,7 @@ import 'reverse_screen.dart';
 import 'speed_burst_screen.dart';
 import 'xor_screen.dart';
 import '../theme.dart';
+import '../services/prefs_keys.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -34,21 +35,15 @@ class _MenuScreenState extends State<MenuScreen> {
     if (!mounted) return;
     setState(() {
       _bestScores = {
-        'match':   prefs.getInt('match_high_score') ?? 0,
-        'reverse': prefs.getInt('reverse_high_score') ?? 0,
-        'addition':prefs.getInt('addition_high_score') ?? 0,
-        'xor':     prefs.getInt('xor_high_score') ?? 0,
-        'speed': [
-          prefs.getInt('speed_match_high_score') ?? 0,
-          prefs.getInt('speed_reverse_high_score') ?? 0,
-          prefs.getInt('speed_addition_high_score') ?? 0,
-          prefs.getInt('speed_xor_high_score') ?? 0,
-          prefs.getInt('speed_hexWord_high_score') ?? 0,
-        ].reduce((a, b) => a > b ? a : b),
-        'hex':      prefs.getInt('hex_high_score') ?? 0,
-        'hex_word': prefs.getInt('hex_word_high_score') ?? 0,
+        'match':   prefs.getInt(PrefsKeys.highScore(GameModes.match)) ?? 0,
+        'reverse': prefs.getInt(PrefsKeys.highScore(GameModes.reverse)) ?? 0,
+        'addition':prefs.getInt(PrefsKeys.highScore(GameModes.addition)) ?? 0,
+        'xor':     prefs.getInt(PrefsKeys.highScore(GameModes.xor)) ?? 0,
+        'speed':   bestSpeedBurstScore(prefs),
+        'hex':      prefs.getInt(PrefsKeys.highScore(GameModes.hex)) ?? 0,
+        'hex_word': prefs.getInt(PrefsKeys.highScore(GameModes.hexWord)) ?? 0,
       };
-      _tier = (prefs.getInt('match_current_tier') ?? 0) + 1;
+      _tier = (prefs.getInt(PrefsKeys.currentTier(GameModes.match)) ?? 0) + 1;
     });
   }
 

@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/prefs_keys.dart';
 
 class ScoreEngine {
   final SharedPreferences _prefs;
@@ -11,10 +12,10 @@ class ScoreEngine {
   int highScore;
 
   ScoreEngine._(this._prefs, String mode)
-      : _keyHighScore = '${mode}_high_score',
-        _keyModeCount = '${mode}_correct_count',
-        _startingHigh = _prefs.getInt('${mode}_high_score') ?? 0,
-        highScore = _prefs.getInt('${mode}_high_score') ?? 0;
+      : _keyHighScore = PrefsKeys.highScore(mode),
+        _keyModeCount = PrefsKeys.correctCount(mode),
+        _startingHigh = _prefs.getInt(PrefsKeys.highScore(mode)) ?? 0,
+        highScore = _prefs.getInt(PrefsKeys.highScore(mode)) ?? 0;
 
   /// Returns true the first time `score` overtakes the high score that
   /// existed when this engine was created. Only fires once per run, and
@@ -44,10 +45,11 @@ class ScoreEngine {
       highScore = score;
       _prefs.setInt(_keyHighScore, highScore);
     }
-    _prefs.setInt('total_correct', (_prefs.getInt('total_correct') ?? 0) + 1);
+    _prefs.setInt(PrefsKeys.totalCorrect,
+        (_prefs.getInt(PrefsKeys.totalCorrect) ?? 0) + 1);
     _prefs.setInt(_keyModeCount, (_prefs.getInt(_keyModeCount) ?? 0) + 1);
-    final bestStreak = _prefs.getInt('best_streak_ever') ?? 0;
-    if (streak > bestStreak) _prefs.setInt('best_streak_ever', streak);
+    final bestStreak = _prefs.getInt(PrefsKeys.bestStreakEver) ?? 0;
+    if (streak > bestStreak) _prefs.setInt(PrefsKeys.bestStreakEver, streak);
     return earned;
   }
 

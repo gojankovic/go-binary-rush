@@ -10,6 +10,7 @@ import 'services/crt_settings.dart';
 import 'services/haptics.dart';
 import 'services/notifications.dart';
 import 'services/palette_settings.dart';
+import 'services/prefs_keys.dart';
 import 'theme.dart';
 import 'widgets/crt_overlay.dart';
 
@@ -77,7 +78,7 @@ class _AppRouterState extends State<_AppRouter> {
 
   Future<void> _check() async {
     final prefs = await SharedPreferences.getInstance();
-    final name = prefs.getString('player_name');
+    final name = prefs.getString(PrefsKeys.playerName);
     if (!mounted) return;
     setState(() {
       _needsName = name == null;

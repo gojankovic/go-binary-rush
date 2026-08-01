@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../game/question_generator.dart';
+import '../services/prefs_keys.dart';
 import '../game/word_list.dart';
 import '../services/haptics.dart';
 import '../widgets/bit_row.dart';
@@ -18,6 +19,18 @@ Color get _yellow => AppColors.amber;
 Color get _red => AppColors.red;
 
 enum _SBMode { match, reverse, addition, xor, hexWord }
+
+extension _SBModeKey on _SBMode {
+  /// The prefs mode id this Speed Burst mode stores under. Spelled out rather
+  /// than derived from [name] so the on-disk ids live in one registry.
+  String get prefsMode => const {
+        _SBMode.match:   GameModes.speedMatch,
+        _SBMode.reverse: GameModes.speedReverse,
+        _SBMode.addition:GameModes.speedAddition,
+        _SBMode.xor:     GameModes.speedXor,
+        _SBMode.hexWord: GameModes.speedHexWord,
+      }[this]!;
+}
 
 extension _SBModeLabel on _SBMode {
   String get label => const {
@@ -117,7 +130,7 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
   }
 
   Future<void> _startMode(_SBMode mode) async {
-    final key = 'speed_${mode.name}';
+    final key = mode.prefsMode;
     final prefs = await SharedPreferences.getInstance();
     QuestionGenerator? gen;
     List<String> hwPool = [];
@@ -134,7 +147,7 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
       _mode = mode;
       _generator = gen;
       _prefs = prefs;
-      _highScore = prefs.getInt('${key}_high_score') ?? 0;
+      _highScore = prefs.getInt(PrefsKeys.highScore(key)) ?? 0;
       _solved = 0;
       _timeLeft = 60;
       _questionSolved = false;
@@ -163,11 +176,11 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
   }
 
   void _onTimeUp() {
-    final key = 'speed_${_mode.name}';
+    final key = _mode.prefsMode;
     final isNew = _solved > _highScore;
     if (isNew) {
       _highScore = _solved;
-      _prefs?.setInt('${key}_high_score', _highScore);
+      _prefs?.setInt(PrefsKeys.highScore(key), _highScore);
     }
     setState(() {
       _timeLeft = 0;
@@ -257,10 +270,10 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
     _flashController.forward(from: 0);
     _generator?.recordSolved();
     if (_mode == _SBMode.hexWord) {
-      final total = (_prefs?.getInt('hex_word_total') ?? 0) + 1;
-      _prefs?.setInt('hex_word_total', total);
+      final total = (_prefs?.getInt(PrefsKeys.hexWordTotal) ?? 0) + 1;
+      _prefs?.setInt(PrefsKeys.hexWordTotal, total);
     }
-    final speedKey = 'speed_${_mode.name}_correct_count';
+    final speedKey = PrefsKeys.correctCount(_mode.prefsMode);
     _prefs?.setInt(speedKey, (_prefs?.getInt(speedKey) ?? 0) + 1);
     if (!_newBestFlashed && _highScore > 0 && _solved > _highScore) {
       _newBestFlashed = true;

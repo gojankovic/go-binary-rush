@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme.dart';
+import '../services/prefs_keys.dart';
 
 class _Achievement {
   final String glyph;
@@ -40,21 +41,15 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
-    final playerName     = (prefs.getString('player_name') ?? 'PLAYER').toUpperCase();
-    final totalCorrect   = prefs.getInt('total_correct') ?? 0;
-    final bestStreak     = prefs.getInt('best_streak_ever') ?? 0;
-    final matchTier      = (prefs.getInt('match_current_tier') ?? 0) + 1;
-    final speedBest      = [
-      prefs.getInt('speed_match_high_score') ?? 0,
-      prefs.getInt('speed_reverse_high_score') ?? 0,
-      prefs.getInt('speed_addition_high_score') ?? 0,
-      prefs.getInt('speed_xor_high_score') ?? 0,
-      prefs.getInt('speed_hexWord_high_score') ?? 0,
-    ].reduce((a, b) => a > b ? a : b);
-    final dailyStreak    = prefs.getInt('daily_streak') ?? 0;
-    final hwTotal        = prefs.getInt('hex_word_total') ?? 0;
-    final hwPerfect      = prefs.getInt('hex_word_perfect_count') ?? 0;
-    final hwSpeedBest    = prefs.getInt('speed_hexWord_high_score') ?? 0;
+    final playerName     = (prefs.getString(PrefsKeys.playerName) ?? 'PLAYER').toUpperCase();
+    final totalCorrect   = prefs.getInt(PrefsKeys.totalCorrect) ?? 0;
+    final bestStreak     = prefs.getInt(PrefsKeys.bestStreakEver) ?? 0;
+    final matchTier      = (prefs.getInt(PrefsKeys.currentTier(GameModes.match)) ?? 0) + 1;
+    final speedBest      = bestSpeedBurstScore(prefs);
+    final dailyStreak    = prefs.getInt(PrefsKeys.dailyStreak) ?? 0;
+    final hwTotal        = prefs.getInt(PrefsKeys.hexWordTotal) ?? 0;
+    final hwPerfect      = prefs.getInt(PrefsKeys.hexWordPerfectCount) ?? 0;
+    final hwSpeedBest    = prefs.getInt(PrefsKeys.highScore(GameModes.speedHexWord)) ?? 0;
 
     if (!mounted) return;
     setState(() {

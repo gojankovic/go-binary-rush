@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/crt_settings.dart';
+import '../services/prefs_keys.dart';
 import '../services/haptics.dart';
 import '../services/notifications.dart';
 import '../services/palette_settings.dart';
@@ -34,7 +35,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
-      _playerName = (prefs.getString('player_name') ?? 'PLAYER').toUpperCase();
+      _playerName = (prefs.getString(PrefsKeys.playerName) ?? 'PLAYER').toUpperCase();
       _reminderEnabled = prefs.getBool(Notifications.prefsEnabled) ?? false;
       _reminderHour =
           prefs.getInt(Notifications.prefsHour) ?? Notifications.defaultHour;

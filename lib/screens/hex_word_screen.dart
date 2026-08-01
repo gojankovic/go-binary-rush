@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../game/score_engine.dart';
+import '../services/prefs_keys.dart';
 import '../services/haptics.dart';
 import '../game/word_list.dart';
 import '../widgets/game_pips.dart';
@@ -83,7 +84,7 @@ class _HexWordScreenState extends State<HexWordScreen>
   void _refreshPoolForCurrentRamp() {
     final p = _prefs;
     if (p == null) return;
-    final total = p.getInt('hex_word_total') ?? 0;
+    final total = p.getInt(PrefsKeys.hexWordTotal) ?? 0;
     final ramp = ((total ~/ _wordsPerStep) + _minWordLen)
         .clamp(_minWordLen, _maxWordLen);
     if (ramp == _currentMaxLen && _pool.isNotEmpty) return;
@@ -93,7 +94,7 @@ class _HexWordScreenState extends State<HexWordScreen>
         .toList()
       ..shuffle(Random());
     _poolIdx = 0;
-    p.setInt('hex_word_max_len', ramp);
+    p.setInt(PrefsKeys.hexWordMaxLen, ramp);
   }
 
   void _loadWord() {
@@ -158,11 +159,11 @@ class _HexWordScreenState extends State<HexWordScreen>
   void _saveProgress() {
     final p = _prefs;
     if (p == null) return;
-    final total = (p.getInt('hex_word_total') ?? 0) + 1;
-    p.setInt('hex_word_total', total);
+    final total = (p.getInt(PrefsKeys.hexWordTotal) ?? 0) + 1;
+    p.setInt(PrefsKeys.hexWordTotal, total);
     if (!_wrongThisWord) {
-      final perfect = (p.getInt('hex_word_perfect_count') ?? 0) + 1;
-      p.setInt('hex_word_perfect_count', perfect);
+      final perfect = (p.getInt(PrefsKeys.hexWordPerfectCount) ?? 0) + 1;
+      p.setInt(PrefsKeys.hexWordPerfectCount, perfect);
     }
   }
 
@@ -256,7 +257,7 @@ class _HexWordScreenState extends State<HexWordScreen>
     final int tierCount = _maxWordLen - _minWordLen + 1;
     final int tier =
         (_currentMaxLen - _minWordLen + 1).clamp(1, tierCount);
-    final int total = _prefs?.getInt('hex_word_total') ?? 0;
+    final int total = _prefs?.getInt(PrefsKeys.hexWordTotal) ?? 0;
     final String progress = tier >= tierCount
         ? 'MAX'
         : '${total % _wordsPerStep}/$_wordsPerStep';

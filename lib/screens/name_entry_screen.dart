@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../theme.dart';
+import '../services/prefs_keys.dart';
 import 'learn_screen.dart';
 
 class NameEntryScreen extends StatefulWidget {
@@ -25,7 +26,7 @@ class _NameEntryScreenState extends State<NameEntryScreen> {
     final raw = _ctrl.text.trim();
     final name = raw.isEmpty ? 'PLAYER' : raw.toUpperCase();
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('player_name', name);
+    await prefs.setString(PrefsKeys.playerName, name);
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(

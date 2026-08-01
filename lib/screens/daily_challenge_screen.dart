@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../game/daily_challenge.dart';
+import '../services/prefs_keys.dart';
 import '../services/haptics.dart';
 import '../services/notifications.dart';
 import '../widgets/bit_row.dart';
@@ -104,9 +105,9 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
     final dateKey = dailyDateKey(now);
     final questions = buildDailyQuestions(now);
 
-    final alreadyDone = prefs.getBool('daily_${dateKey}_done') ?? false;
-    final best = prefs.getInt('daily_${dateKey}_best') ?? 0;
-    final dailyStreak = prefs.getInt('daily_streak') ?? 0;
+    final alreadyDone = prefs.getBool(PrefsKeys.dailyDone(dateKey)) ?? false;
+    final best = prefs.getInt(PrefsKeys.dailyBest(dateKey)) ?? 0;
+    final dailyStreak = prefs.getInt(PrefsKeys.dailyStreak) ?? 0;
 
     if (!mounted) return;
     setState(() {
@@ -324,7 +325,8 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
     Haptics.mediumImpact();
     _pulseCtrl.repeat(reverse: true);
     final newResults = List<bool?>.from(_results)..[_current] = true;
-    _prefs!.setInt('total_correct', (_prefs!.getInt('total_correct') ?? 0) + 1);
+    _prefs!.setInt(PrefsKeys.totalCorrect,
+        (_prefs!.getInt(PrefsKeys.totalCorrect) ?? 0) + 1);
     setState(() {
       _score += 10;
       _solved = true;
@@ -361,19 +363,19 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
   void _finish() {
     if (_score > _bestScore) {
       _bestScore = _score;
-      _prefs!.setInt('daily_${_dateKey}_best', _bestScore);
+      _prefs!.setInt(PrefsKeys.dailyBest(_dateKey), _bestScore);
     }
-    _prefs!.setBool('daily_${_dateKey}_done', true);
+    _prefs!.setBool(PrefsKeys.dailyDone(_dateKey), true);
 
     final streak = nextDailyStreak(
-      currentStreak: _prefs!.getInt('daily_streak') ?? 0,
-      lastDate: _prefs!.getString('daily_last_date') ?? '',
+      currentStreak: _prefs!.getInt(PrefsKeys.dailyStreak) ?? 0,
+      lastDate: _prefs!.getString(PrefsKeys.dailyLastDate) ?? '',
       today: DateTime.now(),
     );
-    _prefs!.setInt('daily_streak', streak);
-    _prefs!.setString('daily_last_date', _dateKey);
+    _prefs!.setInt(PrefsKeys.dailyStreak, streak);
+    _prefs!.setString(PrefsKeys.dailyLastDate, _dateKey);
 
-    final agent = _prefs!.getString('player_name') ?? '';
+    final agent = _prefs!.getString(PrefsKeys.playerName) ?? '';
     Notifications.reschedule(agent.toUpperCase());
 
     setState(() {

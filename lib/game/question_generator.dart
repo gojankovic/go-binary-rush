@@ -1,12 +1,13 @@
 import 'dart:math';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/prefs_keys.dart';
 import 'difficulty.dart';
 
 class QuestionGenerator {
   final SharedPreferences _prefs;
   final Random _random = Random();
   final String _tierKey;
-  final String _seenPrefix;
+  final String _mode;
   final List<Tier> _tiers;
   final int _minTarget;
   final Set<int> _sessionSeen = {};
@@ -19,8 +20,8 @@ class QuestionGenerator {
         _tiers = tiers,
         _minTarget = minTarget,
         _tierIndex = tier.clamp(0, tiers.length - 1),
-        _tierKey = '${mode}_current_tier',
-        _seenPrefix = '${mode}_seen_tier_';
+        _mode = mode,
+        _tierKey = PrefsKeys.currentTier(mode);
 
   static Future<QuestionGenerator> create({
     String mode = 'match',
@@ -31,7 +32,7 @@ class QuestionGenerator {
     final effectiveTiers = tiers ?? kTiers;
     return QuestionGenerator._(
         prefs,
-        prefs.getInt('${mode}_current_tier') ?? 0,
+        prefs.getInt(PrefsKeys.currentTier(mode)) ?? 0,
         mode,
         effectiveTiers,
         minTarget);
@@ -99,16 +100,15 @@ class QuestionGenerator {
         .toList();
   }
 
+  String get _seenKey => PrefsKeys.seenTier(_mode, _tierIndex);
+
   Set<int> _getSeen() {
-    return (_prefs.getStringList('$_seenPrefix$_tierIndex') ?? [])
-        .map(int.parse)
-        .toSet();
+    return (_prefs.getStringList(_seenKey) ?? []).map(int.parse).toSet();
   }
 
   void _markSeen(int target) {
     final seen = _getSeen()..add(target);
-    _prefs.setStringList(
-        '$_seenPrefix$_tierIndex', seen.map((e) => '$e').toList());
+    _prefs.setStringList(_seenKey, seen.map((e) => '$e').toList());
   }
 
   void _advanceTier() {
@@ -116,7 +116,7 @@ class QuestionGenerator {
       _tierIndex++;
       _prefs.setInt(_tierKey, _tierIndex);
     } else {
-      _prefs.remove('$_seenPrefix$_tierIndex');
+      _prefs.remove(_seenKey);
     }
   }
 }
