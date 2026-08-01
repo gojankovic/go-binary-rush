@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -11,14 +13,16 @@ import 'services/palette_settings.dart';
 import 'theme.dart';
 import 'widgets/crt_overlay.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   GoogleFonts.config.allowRuntimeFetching = false;
-  Haptics.init();
-  CrtSettings.init();
-  PaletteSettings.init();
+  await Future.wait([
+    Haptics.init(),
+    CrtSettings.init(),
+    PaletteSettings.init(),
+  ]);
   if (!kIsWeb) {
-    Notifications.init();
+    unawaited(Notifications.init().catchError((_) {}));
   }
   runApp(const BinaryRushApp());
 }
@@ -63,6 +67,7 @@ class _AppRouterState extends State<_AppRouter> {
   Future<void> _check() async {
     final prefs = await SharedPreferences.getInstance();
     final name = prefs.getString('player_name');
+    if (!mounted) return;
     setState(() {
       _needsName = name == null;
       _checked = true;

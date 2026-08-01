@@ -30,14 +30,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _load();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _load();
-  }
-
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _playerName = (prefs.getString('player_name') ?? 'PLAYER').toUpperCase();
       _reminderEnabled = prefs.getBool(Notifications.prefsEnabled) ?? false;
@@ -102,6 +97,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
     if (picked == null || picked == _reminderHour) return;
+    if (!mounted) return;
     setState(() => _reminderHour = picked);
     await Notifications.setHour(picked, _playerName);
   }

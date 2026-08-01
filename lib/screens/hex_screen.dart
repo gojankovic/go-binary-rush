@@ -62,6 +62,7 @@ class _HexScreenState extends State<HexScreen>
     final gen = results[0] as QuestionGenerator;
     final score = results[1] as ScoreEngine;
     final target = gen.next();
+    if (!mounted) return;
     setState(() {
       _generator = gen;
       _scoreEngine = score;

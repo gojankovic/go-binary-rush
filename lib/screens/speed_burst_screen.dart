@@ -129,6 +129,7 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
         minTarget: mode == _SBMode.addition ? 2 : 0,
       );
     }
+    if (!mounted) return;
     setState(() {
       _mode = mode;
       _generator = gen;

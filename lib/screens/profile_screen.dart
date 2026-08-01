@@ -27,14 +27,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _load();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _load();
-  }
-
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _playerName   = (prefs.getString('player_name') ?? 'PLAYER').toUpperCase();
       _totalCorrect = prefs.getInt('total_correct') ?? 0;

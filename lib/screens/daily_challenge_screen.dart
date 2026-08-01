@@ -230,6 +230,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
     final best = prefs.getInt('daily_${dateKey}_best') ?? 0;
     final dailyStreak = prefs.getInt('daily_streak') ?? 0;
 
+    if (!mounted) return;
     setState(() {
       _prefs = prefs;
       _dateKey = dateKey;

@@ -38,12 +38,6 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
     _load();
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _load();
-  }
-
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
     final playerName     = (prefs.getString('player_name') ?? 'PLAYER').toUpperCase();
@@ -56,6 +50,7 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
     final hwPerfect      = prefs.getInt('hex_word_perfect_count') ?? 0;
     final hwSpeedBest    = prefs.getInt('speed_hexWord_high_score') ?? 0;
 
+    if (!mounted) return;
     setState(() {
       _playerName = playerName;
       _achievements = [

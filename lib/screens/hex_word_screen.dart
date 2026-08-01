@@ -72,6 +72,7 @@ class _HexWordScreenState extends State<HexWordScreen>
     ]);
     final score = results[0] as ScoreEngine;
     final prefs = results[1] as SharedPreferences;
+    if (!mounted) return;
     setState(() {
       _score = score;
       _prefs = prefs;

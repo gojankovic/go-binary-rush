@@ -69,6 +69,7 @@ class _XorScreenState extends State<XorScreen>
     ]);
     final gen = results[0] as QuestionGenerator;
     final score = results[1] as ScoreEngine;
+    if (!mounted) return;
     setState(() {
       _generator = gen;
       _scoreEngine = score;

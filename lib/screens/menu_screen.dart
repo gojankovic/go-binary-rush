@@ -31,6 +31,7 @@ class _MenuScreenState extends State<MenuScreen> {
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _bestScores = {
         'match':   prefs.getInt('match_high_score') ?? 0,
@@ -43,12 +44,6 @@ class _MenuScreenState extends State<MenuScreen> {
       };
       _tier = (prefs.getInt('match_current_tier') ?? 0) + 1;
     });
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _load();
   }
 
   void _push(Widget screen) {

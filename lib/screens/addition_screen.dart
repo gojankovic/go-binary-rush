@@ -70,6 +70,7 @@ class _AdditionScreenState extends State<AdditionScreen>
     final gen = results[0] as QuestionGenerator;
     final score = results[1] as ScoreEngine;
     final target = gen.next();
+    if (!mounted) return;
     setState(() {
       _generator = gen;
       _scoreEngine = score;
