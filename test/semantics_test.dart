@@ -60,9 +60,8 @@ void main() {
       ),
     );
 
-    final node = tester.getSemantics(find.bySemanticsLabel('bit worth 1'));
-    tester.binding.pipelineOwner.semanticsOwner!.performAction(
-      node.id,
+    tester.semantics.performAction(
+      find.semantics.byLabel('bit worth 1'),
       SemanticsAction.tap,
     );
     await tester.pump();
