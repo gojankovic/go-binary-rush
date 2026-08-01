@@ -16,6 +16,7 @@ class CrtOverlay extends StatelessWidget {
             if (level > CrtSettings.levelOff)
               IgnorePointer(
                 child: CustomPaint(
+                  key: const ValueKey('crt-overlay-paint'),
                   painter: _CrtPainter(level),
                   child: const SizedBox.expand(),
                 ),

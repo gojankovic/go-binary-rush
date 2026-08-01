@@ -16,6 +16,14 @@ import 'widgets/crt_overlay.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   GoogleFonts.config.allowRuntimeFetching = false;
+  await bootstrap();
+  runApp(const BinaryRushApp());
+}
+
+/// Loads the preference-backed visual/haptic settings that must be in effect
+/// before the first frame is rendered. Notification setup is intentionally not
+/// awaited so it never delays first paint.
+Future<void> bootstrap() async {
   await Future.wait([
     Haptics.init(),
     CrtSettings.init(),
@@ -24,7 +32,6 @@ Future<void> main() async {
   if (!kIsWeb) {
     unawaited(Notifications.init().catchError((_) {}));
   }
-  runApp(const BinaryRushApp());
 }
 
 class BinaryRushApp extends StatelessWidget {
