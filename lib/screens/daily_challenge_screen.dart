@@ -1,86 +1,13 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../game/word_list.dart';
+import '../game/daily_challenge.dart';
 import '../services/haptics.dart';
 import '../services/notifications.dart';
 import '../widgets/bit_row.dart';
 import '../widgets/hex_word_keyboard.dart';
 import '../widgets/num_pad.dart';
 import '../theme.dart';
-
-enum _QMode { match, reverse, hexWord, addition, xor, hexMatch }
-
-typedef _Slot = (_QMode, int);
-
-const List<List<_Slot>> _scheduleVariants = [
-  // 0 — Classic match/reverse mix
-  [
-    (_QMode.match,   4),
-    (_QMode.match,   4),
-    (_QMode.reverse, 4),
-    (_QMode.match,   5),
-    (_QMode.reverse, 5),
-    (_QMode.match,   6),
-    (_QMode.hexWord, 0),
-    (_QMode.hexWord, 0),
-    (_QMode.match,   7),
-    (_QMode.match,   8),
-  ],
-  // 1 — Addition focus
-  [
-    (_QMode.match,    4),
-    (_QMode.addition, 4),
-    (_QMode.match,    5),
-    (_QMode.addition, 5),
-    (_QMode.reverse,  5),
-    (_QMode.addition, 6),
-    (_QMode.match,    6),
-    (_QMode.reverse,  6),
-    (_QMode.hexWord,  0),
-    (_QMode.match,    7),
-  ],
-  // 2 — XOR focus
-  [
-    (_QMode.match,   4),
-    (_QMode.xor,     4),
-    (_QMode.reverse, 4),
-    (_QMode.xor,     5),
-    (_QMode.match,   5),
-    (_QMode.xor,     6),
-    (_QMode.match,   6),
-    (_QMode.reverse, 6),
-    (_QMode.xor,     7),
-    (_QMode.match,   8),
-  ],
-  // 3 — Hex focus
-  [
-    (_QMode.match,    4),
-    (_QMode.hexMatch, 4),
-    (_QMode.match,    5),
-    (_QMode.hexMatch, 4),
-    (_QMode.reverse,  5),
-    (_QMode.hexMatch, 8),
-    (_QMode.match,    6),
-    (_QMode.hexWord,  0),
-    (_QMode.hexMatch, 8),
-    (_QMode.match,    7),
-  ],
-  // 4 — Full mix
-  [
-    (_QMode.match,    4),
-    (_QMode.addition, 4),
-    (_QMode.xor,      4),
-    (_QMode.reverse,  5),
-    (_QMode.hexMatch, 4),
-    (_QMode.match,    6),
-    (_QMode.addition, 5),
-    (_QMode.xor,      6),
-    (_QMode.hexWord,  0),
-    (_QMode.match,    8),
-  ],
-];
 
 class DailyChallengeScreen extends StatefulWidget {
   const DailyChallengeScreen({super.key});
@@ -91,14 +18,11 @@ class DailyChallengeScreen extends StatefulWidget {
 
 class _DailyChallengeScreenState extends State<DailyChallengeScreen>
     with SingleTickerProviderStateMixin {
-  static const int _total = 10;
+  static const int _total = kDailyQuestionCount;
 
   SharedPreferences? _prefs;
   String _dateKey = '';
-  List<_Slot> _schedule = _scheduleVariants[0];
-  List<int> _targets = [];
-  List<String> _words = [];
-  List<int> _xorAs = [];
+  List<DailyQuestion> _questions = const [];
   int _current = 0;
   List<bool?> _results = List.filled(_total, null);
   bool _solved = false;
@@ -146,10 +70,11 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
   late Animation<double> _pulseAnim;
   late Animation<double> _scaleAnim;
 
-  _QMode get _mode => _schedule[_current].$1;
-  int get _qBits => _schedule[_current].$2;
-  int get _target => _targets[_current];
-  String get _word => _words[_current];
+  DailyQuestion get _question => _questions[_current];
+  DailyMode get _mode => _question.mode;
+  int get _qBits => _question.bits;
+  int get _target => _question.target;
+  String get _word => _question.word;
 
   @override
   void initState() {
@@ -176,55 +101,8 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
   Future<void> _init() async {
     final prefs = await SharedPreferences.getInstance();
     final now = DateTime.now();
-    final dateKey =
-        '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}';
-    final seed = now.year * 10000 + now.month * 100 + now.day;
-
-    final startOfYear = DateTime(now.year, 1, 1);
-    final dayOfYear = now.difference(startOfYear).inDays;
-    final schedule =
-        _scheduleVariants[dayOfYear.abs() % _scheduleVariants.length];
-
-    final shortWords = kWordList.where((w) => w.length <= 6).toList();
-    final targets = <int>[];
-    final words = <String>[];
-    final xorAs = <int>[];
-
-    for (int i = 0; i < _total; i++) {
-      final rng = Random(seed + i * 7919);
-      final s = schedule[i];
-      if (s.$1 == _QMode.hexWord) {
-        targets.add(0);
-        words.add(shortWords[rng.nextInt(shortWords.length)]);
-        xorAs.add(0);
-      } else if (s.$1 == _QMode.addition) {
-        // Target high enough to require both rows; range 2..max-1.
-        final b = s.$2;
-        final maxVal = (1 << b) - 1;
-        targets.add(2 + rng.nextInt(maxVal - 2));
-        words.add('');
-        xorAs.add(0);
-      } else if (s.$1 == _QMode.xor) {
-        final b = s.$2;
-        final maxVal = (1 << b) - 1;
-        targets.add(1 + rng.nextInt(maxVal));
-        xorAs.add(rng.nextInt(maxVal + 1));
-        words.add('');
-      } else if (s.$1 == _QMode.hexMatch) {
-        final b = s.$2;
-        final maxVal = (1 << b) - 1;
-        targets.add(1 + rng.nextInt(maxVal));
-        words.add('');
-        xorAs.add(0);
-      } else {
-        final b = s.$2;
-        final min = 1 << (b - 1);
-        final max = (1 << b) - 1;
-        targets.add(min + rng.nextInt(max - min + 1));
-        words.add('');
-        xorAs.add(0);
-      }
-    }
+    final dateKey = dailyDateKey(now);
+    final questions = buildDailyQuestions(now);
 
     final alreadyDone = prefs.getBool('daily_${dateKey}_done') ?? false;
     final best = prefs.getInt('daily_${dateKey}_best') ?? 0;
@@ -234,10 +112,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
     setState(() {
       _prefs = prefs;
       _dateKey = dateKey;
-      _schedule = schedule;
-      _targets = targets;
-      _words = words;
-      _xorAs = xorAs;
+      _questions = questions;
       _results = List.filled(_total, null);
       _bestScore = best;
       _score = alreadyDone ? best : 0;
@@ -250,9 +125,9 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
   }
 
   void _setupQuestion() {
-    final s = _schedule[_current];
-    final hwPairs = s.$1 == _QMode.hexWord
-        ? _words[_current].codeUnits
+    final q = _question;
+    final hwPairs = q.mode == DailyMode.hexWord
+        ? q.word.codeUnits
             .map((c) => c.toRadixString(16).padLeft(2, '0').toUpperCase())
             .toList()
         : <String>[];
@@ -267,15 +142,15 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
       _hmHighEntry = null;
       _hmWrong = false;
       _hwCachedHexPairs = hwPairs;
-      if (s.$1 == _QMode.match) {
-        _bits = List.filled(s.$2, 0);
-      } else if (s.$1 == _QMode.addition) {
-        _addA = List.filled(s.$2, 0);
-        _addB = List.filled(s.$2, 0);
-      } else if (s.$1 == _QMode.xor) {
-        _curXorA = _toBits(_xorAs[_current], s.$2);
-        _curXorB = _toBits(_xorAs[_current] ^ _target, s.$2);
-        _curXorC = List.filled(s.$2, 0);
+      if (q.mode == DailyMode.match) {
+        _bits = List.filled(q.bits, 0);
+      } else if (q.mode == DailyMode.addition) {
+        _addA = List.filled(q.bits, 0);
+        _addB = List.filled(q.bits, 0);
+      } else if (q.mode == DailyMode.xor) {
+        _curXorA = _toBits(q.xorA, q.bits);
+        _curXorB = _toBits(q.xorA ^ q.target, q.bits);
+        _curXorC = List.filled(q.bits, 0);
       }
     });
   }
@@ -490,17 +365,11 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
     }
     _prefs!.setBool('daily_${_dateKey}_done', true);
 
-    final now = DateTime.now();
-    final yest = now.subtract(const Duration(days: 1));
-    final yesterdayKey =
-        '${yest.year}${yest.month.toString().padLeft(2, '0')}${yest.day.toString().padLeft(2, '0')}';
-    final lastDate = _prefs!.getString('daily_last_date') ?? '';
-    int streak = _prefs!.getInt('daily_streak') ?? 0;
-    if (lastDate == yesterdayKey || lastDate.isEmpty) {
-      streak++;
-    } else if (lastDate != _dateKey) {
-      streak = 1;
-    }
+    final streak = nextDailyStreak(
+      currentStreak: _prefs!.getInt('daily_streak') ?? 0,
+      lastDate: _prefs!.getString('daily_last_date') ?? '',
+      today: DateTime.now(),
+    );
     _prefs!.setInt('daily_streak', streak);
     _prefs!.setString('daily_last_date', _dateKey);
 
@@ -559,16 +428,16 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
 
   Widget _buildGame() {
     switch (_mode) {
-      case _QMode.hexWord:
+      case DailyMode.hexWord:
         return _buildHexWordGame();
-      case _QMode.addition:
+      case DailyMode.addition:
         return _buildAdditionGame();
-      case _QMode.xor:
+      case DailyMode.xor:
         return _buildXorGame();
-      case _QMode.hexMatch:
+      case DailyMode.hexMatch:
         return _buildHexMatchGame();
-      case _QMode.match:
-      case _QMode.reverse:
+      case DailyMode.match:
+      case DailyMode.reverse:
         return _buildBinaryGame();
     }
   }
@@ -864,8 +733,8 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
           const Spacer(),
           _modeLabel(),
           const SizedBox(height: 14),
-          if (_mode == _QMode.match) _matchContent(),
-          if (_mode == _QMode.reverse) _reverseContent(),
+          if (_mode == DailyMode.match) _matchContent(),
+          if (_mode == DailyMode.reverse) _reverseContent(),
           const SizedBox(height: 20),
           SizedBox(height: 90, child: _binaryFeedback()),
           const Spacer(),
@@ -1151,15 +1020,15 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
 
   Widget _modeLabel() {
     final label = switch (_mode) {
-      _QMode.match    => 'MATCH',
-      _QMode.reverse  => 'REVERSE',
-      _QMode.hexWord  => 'HEX WORD',
-      _QMode.addition => 'ADDITION',
-      _QMode.xor      => 'XOR',
-      _QMode.hexMatch => 'HEX MATCH',
+      DailyMode.match    => 'MATCH',
+      DailyMode.reverse  => 'REVERSE',
+      DailyMode.hexWord  => 'HEX WORD',
+      DailyMode.addition => 'ADDITION',
+      DailyMode.xor      => 'XOR',
+      DailyMode.hexMatch => 'HEX MATCH',
     };
     final sub =
-        _mode != _QMode.hexWord ? '$_qBits-BIT  ·  ' : '';
+        _mode != DailyMode.hexWord ? '$_qBits-BIT  ·  ' : '';
     return Column(
       children: [
         Text(label,
@@ -1297,18 +1166,18 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
 
   Widget _resultsGrid() {
     const modeChar = {
-      _QMode.match:    'M',
-      _QMode.reverse:  'R',
-      _QMode.hexWord:  'W',
-      _QMode.addition: 'A',
-      _QMode.xor:      'X',
-      _QMode.hexMatch: 'H',
+      DailyMode.match:    'M',
+      DailyMode.reverse:  'R',
+      DailyMode.hexWord:  'W',
+      DailyMode.addition: 'A',
+      DailyMode.xor:      'X',
+      DailyMode.hexMatch: 'H',
     };
     return Wrap(
       spacing: 8,
       runSpacing: 8,
       children: List.generate(_total, (i) {
-        final s = _schedule[i];
+        final q = _questions[i];
         final isFailed = _results[i] == false;
         return Container(
           width: 42,
@@ -1331,7 +1200,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
                       size: 13,
                       color: isFailed ? AppColors.red : AppColors.g4,
                       weight: FontWeight.w700)),
-              Text(modeChar[s.$1]!,
+              Text(modeChar[q.mode]!,
                   style: AppText.mono(
                       size: 7,
                       color: isFailed ? AppColors.red.withValues(alpha: 0.6) : AppColors.g2)),

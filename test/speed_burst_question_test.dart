@@ -16,8 +16,11 @@ Future<void> _solveMatch(WidgetTester tester) async {
   final target = _readTarget(tester);
   final tiles = find.byType(BitTile);
   final n = tester.widgetList(tiles).length;
-  expect(target, lessThanOrEqualTo((1 << n) - 1),
-      reason: 'target $target cannot be built from $n bit tiles');
+  expect(
+    target,
+    lessThanOrEqualTo((1 << n) - 1),
+    reason: 'target $target cannot be built from $n bit tiles',
+  );
   for (var i = 0; i < n; i++) {
     if ((target >> (n - 1 - i)) & 1 == 1) {
       await tester.tap(tiles.at(i));
