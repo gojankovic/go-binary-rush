@@ -70,6 +70,9 @@ android {
 
 // Fail an explicitly requested release build when signing credentials are missing,
 // instead of emitting an unsigned/debug-signed artifact. Debug builds are unaffected.
+// Note: taskGraph.whenReady is not configuration-cache compatible. Flutter does not
+// enable the configuration cache by default; if it is ever turned on, replace this
+// with a doFirst check on the release packaging tasks.
 if (!hasReleaseSigning) {
     gradle.taskGraph.whenReady {
         val buildingRelease = allTasks.any { task ->

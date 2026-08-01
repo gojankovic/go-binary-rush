@@ -30,7 +30,11 @@ Future<void> bootstrap() async {
     PaletteSettings.init(),
   ]);
   if (!kIsWeb) {
-    unawaited(Notifications.init().catchError((_) {}));
+    unawaited(Notifications.init().catchError((Object e, StackTrace s) {
+      // Reminders are optional; a failure here must not take down startup, but
+      // silently dropping it makes "my reminder never fired" undiagnosable.
+      debugPrint('Notifications.init failed: $e\n$s');
+    }));
   }
 }
 
