@@ -117,6 +117,7 @@ class _ReverseScreenState extends State<ReverseScreen>
   void _onCorrect() {
     Haptics.mediumImpact();
     final earned = _scoreEngine!.onCorrect();
+    _generator!.recordSolved();
     final newBest = _scoreEngine!.consumeNewBestFlash();
     setState(() {
       _solved = true;

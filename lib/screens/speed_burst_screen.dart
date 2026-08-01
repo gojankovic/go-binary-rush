@@ -252,6 +252,7 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
       _solved++;
     });
     _flashController.forward(from: 0);
+    _generator?.recordSolved();
     if (_mode == _SBMode.hexWord) {
       final total = (_prefs?.getInt('hex_word_total') ?? 0) + 1;
       _prefs?.setInt('hex_word_total', total);

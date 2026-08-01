@@ -115,6 +115,7 @@ class _HexScreenState extends State<HexScreen>
   void _triggerSuccess() {
     Haptics.mediumImpact();
     _scoreEngine!.onCorrect();
+    _generator!.recordSolved();
     final newBest = _scoreEngine!.consumeNewBestFlash();
     setState(() {
       _solved = true;

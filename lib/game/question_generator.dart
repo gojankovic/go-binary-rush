@@ -11,6 +11,7 @@ class QuestionGenerator {
   final int _minTarget;
   final Set<int> _sessionSeen = {};
   int _tierIndex;
+  int? _currentTarget;
 
   QuestionGenerator._(SharedPreferences prefs, int tier, String mode,
       List<Tier> tiers, int minTarget)
@@ -41,25 +42,45 @@ class QuestionGenerator {
   int get tierSolvedCount => _getSeen().length;
   int get tierCap => _tiers[_tierIndex].cap;
 
+  /// Produces a target for the current tier. Generating a question never
+  /// advances the tier or records progress: the tier and bit width stay
+  /// stable for the lifetime of the returned question. Call [recordSolved]
+  /// when the player actually solves it.
   int next() {
     var available = _available();
     if (available.isEmpty) {
+      // Every target has been shown this session but not enough have been
+      // solved to advance; allow repeats rather than forcing progress.
+      _sessionSeen.clear();
+      available = _available();
+    }
+    if (available.isEmpty) {
+      // Safety net: the persisted solved-set fills the whole tier (e.g. legacy
+      // data). Advance so we can keep generating instead of looping forever.
       _advanceTier();
       available = _available();
-      // At max tier the session-seen set can fully block the (now-reset) tier
-      // pool; clear it so we can keep generating instead of looping forever.
       if (available.isEmpty) {
         _sessionSeen.clear();
         available = _available();
       }
     }
     final target = available[_random.nextInt(available.length)];
-    _markSeen(target);
     _sessionSeen.add(target);
+    _currentTarget = target;
+    return target;
+  }
+
+  /// Records the current question as solved. Only a solve advances tier
+  /// progress; once the tier's cap of solved questions is reached the tier
+  /// advances for the next question. Safe to call at most once per question.
+  void recordSolved() {
+    final target = _currentTarget;
+    if (target == null) return;
+    _currentTarget = null;
+    _markSeen(target);
     if (_getSeen().length >= _tiers[_tierIndex].cap) {
       _advanceTier();
     }
-    return target;
   }
 
   List<int> _available() {

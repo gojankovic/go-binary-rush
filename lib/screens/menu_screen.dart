@@ -38,7 +38,13 @@ class _MenuScreenState extends State<MenuScreen> {
         'reverse': prefs.getInt('reverse_high_score') ?? 0,
         'addition':prefs.getInt('addition_high_score') ?? 0,
         'xor':     prefs.getInt('xor_high_score') ?? 0,
-        'speed':   prefs.getInt('speed_match_high_score') ?? 0,
+        'speed': [
+          prefs.getInt('speed_match_high_score') ?? 0,
+          prefs.getInt('speed_reverse_high_score') ?? 0,
+          prefs.getInt('speed_addition_high_score') ?? 0,
+          prefs.getInt('speed_xor_high_score') ?? 0,
+          prefs.getInt('speed_hexWord_high_score') ?? 0,
+        ].reduce((a, b) => a > b ? a : b),
         'hex':      prefs.getInt('hex_high_score') ?? 0,
         'hex_word': prefs.getInt('hex_word_high_score') ?? 0,
       };
@@ -95,6 +101,7 @@ class _MenuScreenState extends State<MenuScreen> {
           _ModeItem(
             index: 5, name: 'SPEED BURST', sub: '60 second blitz',
             best: _bestScores['speed'],
+            bestLabel: 'BEST ANY',
             onTap: () => _push(const SpeedBurstScreen()),
           ),
           _ModeItem(
@@ -190,6 +197,7 @@ class _ModeItem extends StatelessWidget {
   final String name;
   final String sub;
   final int? best;
+  final String bestLabel;
   final VoidCallback onTap;
 
   const _ModeItem({
@@ -198,6 +206,7 @@ class _ModeItem extends StatelessWidget {
     required this.sub,
     required this.best,
     required this.onTap,
+    this.bestLabel = 'BEST',
   });
 
   @override
@@ -231,7 +240,7 @@ class _ModeItem extends StatelessWidget {
                       style: AppText.mono(
                           size: 12,
                           color: best! > 0 ? AppColors.g3 : AppColors.g1)),
-                  Text('BEST',
+                  Text(bestLabel,
                       style: AppText.kicker(
                           color: best! > 0 ? AppColors.g2 : AppColors.g1)),
                 ],

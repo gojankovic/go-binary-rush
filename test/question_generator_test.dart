@@ -42,8 +42,38 @@ void main() {
     }
   });
 
+  test('generating questions never advances the tier', () async {
+    SharedPreferences.setMockInitialValues({});
+    final gen = await QuestionGenerator.create(mode: 'unit', tiers: _tiers);
+
+    // Cap is 2 but generating far past it must not advance without solving.
+    for (var i = 0; i < 10; i++) {
+      gen.next();
+    }
+
+    expect(gen.currentTier, 1);
+    expect(gen.currentBits, 4);
+    expect(gen.tierSolvedCount, 0);
+  });
+
+  test('only solves count toward tier progress', () async {
+    SharedPreferences.setMockInitialValues({});
+    final gen = await QuestionGenerator.create(mode: 'unit', tiers: _tiers);
+
+    gen.next();
+    gen.recordSolved();
+    expect(gen.tierSolvedCount, 1);
+    expect(gen.currentTier, 1); // cap is 2, one solve is not enough
+
+    // Leaving these questions unsolved must not add progress.
+    gen.next();
+    gen.next();
+    expect(gen.tierSolvedCount, 1);
+    expect(gen.currentTier, 1);
+  });
+
   test(
-    'advances from a 4-bit tier to the 5-bit tier at the cap boundary',
+    'advances to the 5-bit tier once the cap of solves is reached',
     () async {
       SharedPreferences.setMockInitialValues({});
       final gen = await QuestionGenerator.create(mode: 'unit', tiers: _tiers);
@@ -51,10 +81,27 @@ void main() {
       expect(gen.currentBits, 4);
 
       gen.next();
-      gen.next(); // reaching cap (2) advances the tier
+      gen.recordSolved();
+      gen.next();
+      gen.recordSolved(); // second solve reaches cap (2) -> advance
 
       expect(gen.currentTier, 2);
       expect(gen.currentBits, 5);
+    },
+  );
+
+  test(
+    'recordSolved is a no-op without a pending generated question',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final gen = await QuestionGenerator.create(mode: 'unit', tiers: _tiers);
+
+      gen.next();
+      gen.recordSolved();
+      gen.recordSolved(); // no current question -> must not double-count
+
+      expect(gen.tierSolvedCount, 1);
+      expect(gen.currentTier, 1);
     },
   );
 
@@ -62,7 +109,9 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final gen = await QuestionGenerator.create(mode: 'unit', tiers: _tiers);
     gen.next();
+    gen.recordSolved();
     gen.next();
+    gen.recordSolved();
 
     final reopened = await QuestionGenerator.create(
       mode: 'unit',
@@ -82,7 +131,9 @@ void main() {
         ],
       );
       gen.next();
-      gen.next(); // hits cap at the last tier -> seen is cleared
+      gen.recordSolved();
+      gen.next();
+      gen.recordSolved(); // hits cap at the last tier -> seen is cleared
 
       expect(gen.tierSolvedCount, 0);
       expect([1, 2], contains(gen.next()));

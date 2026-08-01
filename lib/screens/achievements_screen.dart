@@ -44,7 +44,13 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
     final totalCorrect   = prefs.getInt('total_correct') ?? 0;
     final bestStreak     = prefs.getInt('best_streak_ever') ?? 0;
     final matchTier      = (prefs.getInt('match_current_tier') ?? 0) + 1;
-    final speedBest      = prefs.getInt('speed_match_high_score') ?? 0;
+    final speedBest      = [
+      prefs.getInt('speed_match_high_score') ?? 0,
+      prefs.getInt('speed_reverse_high_score') ?? 0,
+      prefs.getInt('speed_addition_high_score') ?? 0,
+      prefs.getInt('speed_xor_high_score') ?? 0,
+      prefs.getInt('speed_hexWord_high_score') ?? 0,
+    ].reduce((a, b) => a > b ? a : b);
     final dailyStreak    = prefs.getInt('daily_streak') ?? 0;
     final hwTotal        = prefs.getInt('hex_word_total') ?? 0;
     final hwPerfect      = prefs.getInt('hex_word_perfect_count') ?? 0;
@@ -91,8 +97,8 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
         ),
         _Achievement(
           glyph: '⚡', name: 'SPEED DEMON',
-          sub: 'score 100+ in Speed Burst',
-          goal: 100, progress: speedBest,
+          sub: 'solve 25+ in any Speed Burst mode',
+          goal: 25, progress: speedBest,
         ),
         _Achievement(
           glyph: '◈', name: 'DAILY ×3',

@@ -114,6 +114,7 @@ class _AdditionScreenState extends State<AdditionScreen>
   void _triggerSuccess() {
     Haptics.mediumImpact();
     final earned = _scoreEngine!.onCorrect();
+    _generator!.recordSolved();
     final newBest = _scoreEngine!.consumeNewBestFlash();
     setState(() {
       _solved = true;
