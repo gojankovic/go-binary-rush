@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../game/binary.dart';
 import '../game/daily_challenge.dart';
+import '../services/daily_progress_store.dart';
 import '../services/prefs_keys.dart';
 import '../services/haptics.dart';
 import '../services/notifications.dart';
@@ -30,6 +32,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
   bool _done = false;
   bool _alreadyDone = false;
   bool _loaded = false;
+  bool _finishing = false;
   int _score = 0;
   int _bestScore = 0;
   int _dailyStreak = 0;
@@ -81,11 +84,17 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
   void initState() {
     super.initState();
     _pulseCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 600));
-    _pulseAnim = Tween<double>(begin: 0.3, end: 1.0).animate(
-        CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
-    _scaleAnim = Tween<double>(begin: 0.94, end: 1.05).animate(
-        CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _pulseAnim = Tween<double>(
+      begin: 0.3,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
+    _scaleAnim = Tween<double>(
+      begin: 0.94,
+      end: 1.05,
+    ).animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
     _init();
   }
 
@@ -129,8 +138,8 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
     final q = _question;
     final hwPairs = q.mode == DailyMode.hexWord
         ? q.word.codeUnits
-            .map((c) => c.toRadixString(16).padLeft(2, '0').toUpperCase())
-            .toList()
+              .map((c) => c.toRadixString(16).padLeft(2, '0').toUpperCase())
+              .toList()
         : <String>[];
     setState(() {
       _attempts = 0;
@@ -149,8 +158,8 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
         _addA = List.filled(q.bits, 0);
         _addB = List.filled(q.bits, 0);
       } else if (q.mode == DailyMode.xor) {
-        _curXorA = _toBits(q.xorA, q.bits);
-        _curXorB = _toBits(q.xorA ^ q.target, q.bits);
+        _curXorA = intToBits(q.xorA, q.bits);
+        _curXorB = intToBits(q.xorA ^ q.target, q.bits);
         _curXorC = List.filled(q.bits, 0);
       }
     });
@@ -158,23 +167,12 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
 
   // ── Match ──────────────────────────────────────────────────────
 
-  int _val(List<int> bits) {
-    int v = 0;
-    for (int i = 0; i < bits.length; i++) {
-      v += bits[i] * (1 << (bits.length - 1 - i));
-    }
-    return v;
-  }
-
-  List<int> _toBits(int value, int n) =>
-      List.generate(n, (i) => (value >> (n - 1 - i)) & 1);
-
   void _toggleBit(int index) {
     if (_solved || _failed) return;
     Haptics.selectionClick();
     final nb = List<int>.from(_bits)..[index] ^= 1;
     setState(() => _bits = nb);
-    if (_val(nb) == _target) _triggerSuccess();
+    if (bitsToInt(nb) == _target) _triggerSuccess();
   }
 
   // ── Addition ───────────────────────────────────────────────────
@@ -196,8 +194,8 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
   }
 
   void _checkAddition() {
-    final va = _val(_addA);
-    final vb = _val(_addB);
+    final va = bitsToInt(_addA);
+    final vb = bitsToInt(_addB);
     if (va > 0 && vb > 0 && va + vb == _target) _triggerSuccess();
   }
 
@@ -208,7 +206,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
     Haptics.selectionClick();
     final nb = List<int>.from(_curXorC)..[index] ^= 1;
     setState(() => _curXorC = nb);
-    if (_val(nb) == _target) _triggerSuccess();
+    if (bitsToInt(nb) == _target) _triggerSuccess();
   }
 
   // ── HEX MATCH ──────────────────────────────────────────────────
@@ -267,7 +265,8 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
     if (d == '⌫') {
       if (_revEntry.isNotEmpty) {
         setState(
-            () => _revEntry = _revEntry.substring(0, _revEntry.length - 1));
+          () => _revEntry = _revEntry.substring(0, _revEntry.length - 1),
+        );
       }
       return;
     }
@@ -279,14 +278,22 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
     } else if (next.length >= _target.toString().length) {
       _attempts++;
       _revWrongTimer?.cancel();
-      setState(() { _revWrong = true; _revEntry = next; });
+      setState(() {
+        _revWrong = true;
+        _revEntry = next;
+      });
       if (_attempts >= 3) {
         _revWrongTimer = Timer(const Duration(milliseconds: 400), () {
           if (mounted) _triggerFail();
         });
       } else {
         _revWrongTimer = Timer(const Duration(milliseconds: 400), () {
-          if (mounted) setState(() { _revWrong = false; _revEntry = ''; });
+          if (mounted) {
+            setState(() {
+              _revWrong = false;
+              _revEntry = '';
+            });
+          }
         });
       }
     } else {
@@ -325,8 +332,10 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
     Haptics.mediumImpact();
     _pulseCtrl.repeat(reverse: true);
     final newResults = List<bool?>.from(_results)..[_current] = true;
-    _prefs!.setInt(PrefsKeys.totalCorrect,
-        (_prefs!.getInt(PrefsKeys.totalCorrect) ?? 0) + 1);
+    _prefs!.setInt(
+      PrefsKeys.totalCorrect,
+      (_prefs!.getInt(PrefsKeys.totalCorrect) ?? 0) + 1,
+    );
     setState(() {
       _score += 10;
       _solved = true;
@@ -353,34 +362,38 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
     _pulseCtrl.stop();
     _pulseCtrl.reset();
     if (_current + 1 >= _total) {
-      _finish();
+      unawaited(_finish());
       return;
     }
     setState(() => _current++);
     _setupQuestion();
   }
 
-  void _finish() {
-    if (_score > _bestScore) {
-      _bestScore = _score;
-      _prefs!.setInt(PrefsKeys.dailyBest(_dateKey), _bestScore);
+  Future<void> _finish() async {
+    if (_finishing || _done) return;
+    _finishing = true;
+    DailyCompletionResult result;
+    try {
+      result = await DailyProgressStore(_prefs!).recordCompletion(
+        dateKey: _dateKey,
+        score: _score,
+        completedAt: DateTime.now(),
+      );
+    } catch (error, stackTrace) {
+      debugPrint('Daily completion persistence failed: $error\n$stackTrace');
+      _finishing = false;
+      return;
     }
-    _prefs!.setBool(PrefsKeys.dailyDone(_dateKey), true);
-
-    final streak = nextDailyStreak(
-      currentStreak: _prefs!.getInt(PrefsKeys.dailyStreak) ?? 0,
-      lastDate: _prefs!.getString(PrefsKeys.dailyLastDate) ?? '',
-      today: DateTime.now(),
-    );
-    _prefs!.setInt(PrefsKeys.dailyStreak, streak);
-    _prefs!.setString(PrefsKeys.dailyLastDate, _dateKey);
 
     final agent = _prefs!.getString(PrefsKeys.playerName) ?? '';
-    Notifications.reschedule(agent.toUpperCase());
+    unawaited(Notifications.reschedule(agent.toUpperCase()));
 
+    if (!mounted) return;
     setState(() {
+      _bestScore = result.bestScore;
       _done = true;
-      _dailyStreak = streak;
+      _finishing = false;
+      _dailyStreak = result.streak;
     });
   }
 
@@ -406,7 +419,9 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
   Widget build(BuildContext context) {
     if (!_loaded) {
       return const Scaffold(
-          backgroundColor: Colors.black, body: SizedBox.shrink());
+        backgroundColor: Colors.black,
+        body: SizedBox.shrink(),
+      );
     }
     return Scaffold(
       backgroundColor: Colors.black,
@@ -423,8 +438,8 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
       body: _alreadyDone
           ? _buildAlreadyDone()
           : _done
-              ? _buildResults()
-              : _buildGame(),
+          ? _buildResults()
+          : _buildGame(),
     );
   }
 
@@ -447,8 +462,8 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
   // ── Addition game ──────────────────────────────────────────────
 
   Widget _buildAdditionGame() {
-    final va = _val(_addA);
-    final vb = _val(_addB);
+    final va = bitsToInt(_addA);
+    final vb = bitsToInt(_addB);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
@@ -460,9 +475,12 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
           const SizedBox(height: 14),
           Text('$_target', style: AppText.bigTarget()),
           const SizedBox(height: 4),
-          Text('A > 0   +   B > 0',
-              style: AppText.kicker(color: AppColors.g2)
-                  .copyWith(letterSpacing: 3)),
+          Text(
+            'A > 0   +   B > 0',
+            style: AppText.kicker(
+              color: AppColors.g2,
+            ).copyWith(letterSpacing: 3),
+          ),
           const SizedBox(height: 18),
           _addRow('A', _addA, va, _toggleAddA),
           const SizedBox(height: 12),
@@ -471,8 +489,10 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
           if (!_solved && !_failed)
             GestureDetector(
               onTap: _triggerFail,
-              child: Text('GIVE UP →',
-                  style: AppText.mono(size: 11, color: AppColors.g1)),
+              child: Text(
+                'GIVE UP →',
+                style: AppText.mono(size: 11, color: AppColors.g1),
+              ),
             ),
           const SizedBox(height: 12),
           SizedBox(height: 60, child: _binaryFeedback()),
@@ -482,30 +502,43 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
     );
   }
 
-  Widget _addRow(String label, List<int> bits, int v,
-      void Function(int) onToggle) {
+  Widget _addRow(
+    String label,
+    List<int> bits,
+    int v,
+    void Function(int) onToggle,
+  ) {
     return Column(
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(label,
-                style: AppText.kicker(color: AppColors.g2)
-                    .copyWith(letterSpacing: 3)),
+            Text(
+              label,
+              style: AppText.kicker(
+                color: AppColors.g2,
+              ).copyWith(letterSpacing: 3),
+            ),
             if (_solved) ...[
               const SizedBox(width: 12),
-              Text('= $v',
-                  style: AppText.mono(
-                      size: 16, color: AppColors.g4, weight: FontWeight.w600)),
+              Text(
+                '= $v',
+                style: AppText.mono(
+                  size: 16,
+                  color: AppColors.g4,
+                  weight: FontWeight.w600,
+                ),
+              ),
             ],
           ],
         ),
         const SizedBox(height: 4),
         BitRow(
-            bits: bits,
-            onToggle: onToggle,
-            enabled: !_solved && !_failed,
-            glowing: _solved),
+          bits: bits,
+          onToggle: onToggle,
+          enabled: !_solved && !_failed,
+          glowing: _solved,
+        ),
       ],
     );
   }
@@ -522,9 +555,12 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
           const Spacer(),
           _modeLabel(),
           const SizedBox(height: 14),
-          Text('A  ⊕  B  =  C',
-              style: AppText.kicker(color: AppColors.g3)
-                  .copyWith(letterSpacing: 4, fontSize: 12)),
+          Text(
+            'A  ⊕  B  =  C',
+            style: AppText.kicker(
+              color: AppColors.g3,
+            ).copyWith(letterSpacing: 4, fontSize: 12),
+          ),
           const SizedBox(height: 14),
           _xorFixedRow('A', _curXorA),
           const SizedBox(height: 6),
@@ -536,16 +572,17 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               SizedBox(
-                  width: 20,
-                  child: Text('C',
-                      style: AppText.kicker(color: AppColors.g2))),
+                width: 20,
+                child: Text('C', style: AppText.kicker(color: AppColors.g2)),
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: BitRow(
-                    bits: _curXorC,
-                    onToggle: _toggleXorC,
-                    enabled: !_solved && !_failed,
-                    glowing: _solved),
+                  bits: _curXorC,
+                  onToggle: _toggleXorC,
+                  enabled: !_solved && !_failed,
+                  glowing: _solved,
+                ),
               ),
             ],
           ),
@@ -553,8 +590,10 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
           if (!_solved && !_failed)
             GestureDetector(
               onTap: _triggerFail,
-              child: Text('GIVE UP →',
-                  style: AppText.mono(size: 11, color: AppColors.g1)),
+              child: Text(
+                'GIVE UP →',
+                style: AppText.mono(size: 11, color: AppColors.g1),
+              ),
             ),
           const SizedBox(height: 12),
           SizedBox(height: 60, child: _binaryFeedback()),
@@ -569,8 +608,9 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         SizedBox(
-            width: 20,
-            child: Text(label, style: AppText.kicker(color: AppColors.g2))),
+          width: 20,
+          child: Text(label, style: AppText.kicker(color: AppColors.g2)),
+        ),
         const SizedBox(width: 8),
         Expanded(
           child: BitRow(bits: bits, onToggle: (_) {}, enabled: false),
@@ -582,7 +622,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
   // ── HEX MATCH game ─────────────────────────────────────────────
 
   Widget _buildHexMatchGame() {
-    final bits = _toBits(_target, _qBits);
+    final bits = intToBits(_target, _qBits);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
@@ -594,30 +634,37 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
           const SizedBox(height: 14),
           if (_hmIs4bit)
             BitRow(
-                bits: bits,
-                onToggle: (_) {},
-                enabled: false,
-                glowing: _solved)
+              bits: bits,
+              onToggle: (_) {},
+              enabled: false,
+              glowing: _solved,
+            )
           else
-            Column(children: [
-              BitRow(
+            Column(
+              children: [
+                BitRow(
                   bits: bits.sublist(0, 4),
                   onToggle: (_) {},
                   enabled: false,
-                  glowing: _solved),
-              const SizedBox(height: 6),
-              BitRow(
+                  glowing: _solved,
+                ),
+                const SizedBox(height: 6),
+                BitRow(
                   bits: bits.sublist(4),
                   onToggle: (_) {},
                   enabled: false,
-                  glowing: _solved),
-            ]),
+                  glowing: _solved,
+                ),
+              ],
+            ),
           const SizedBox(height: 20),
           _hmAnswerSlots(),
           if (!_solved && !_failed && _attempts > 0) ...[
             const SizedBox(height: 6),
-            Text('ATT $_attempts / 3',
-                style: AppText.mono(size: 10, color: AppColors.red)),
+            Text(
+              'ATT $_attempts / 3',
+              style: AppText.mono(size: 10, color: AppColors.red),
+            ),
           ],
           const SizedBox(height: 16),
           if (!_solved && !_failed) _hmKeypad(),
@@ -632,16 +679,22 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
     String? hi;
     String? lo;
     if (_solved || _failed) {
-      hi = _hmIs4bit ? null : _target.toRadixString(16).padLeft(2, '0')
-          .substring(0, 1).toUpperCase();
-      lo = _hmIs4bit
-          ? _target.toRadixString(16).toUpperCase()
-          : _target.toRadixString(16).padLeft(2, '0')
-              .substring(1).toUpperCase();
-    } else {
       hi = _hmIs4bit
           ? null
-          : _hmHighEntry?.toRadixString(16).toUpperCase();
+          : _target
+                .toRadixString(16)
+                .padLeft(2, '0')
+                .substring(0, 1)
+                .toUpperCase();
+      lo = _hmIs4bit
+          ? _target.toRadixString(16).toUpperCase()
+          : _target
+                .toRadixString(16)
+                .padLeft(2, '0')
+                .substring(1)
+                .toUpperCase();
+    } else {
+      hi = _hmIs4bit ? null : _hmHighEntry?.toRadixString(16).toUpperCase();
       lo = null;
     }
 
@@ -651,28 +704,33 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        _hmSlot(hi,
-            highlight:
-                _solved || _failed || (_hmHighEntry != null && !_hmWrong)),
+        _hmSlot(
+          hi,
+          highlight: _solved || _failed || (_hmHighEntry != null && !_hmWrong),
+        ),
         const SizedBox(width: 12),
         _hmSlot(lo, highlight: _solved || _failed),
         const SizedBox(width: 18),
         GestureDetector(
           onTap: _hmBackspace,
-          child: Text('←',
-              style: AppText.mono(
-                  size: 20,
-                  color: (!_solved && !_failed && _hmHighEntry != null)
-                      ? AppColors.g4
-                      : AppColors.g1)),
+          child: Text(
+            '←',
+            style: AppText.mono(
+              size: 20,
+              color: (!_solved && !_failed && _hmHighEntry != null)
+                  ? AppColors.g4
+                  : AppColors.g1,
+            ),
+          ),
         ),
       ],
     );
   }
 
   Widget _hmSlot(String? char, {bool highlight = false}) {
-    final borderColor =
-        _hmWrong ? AppColors.red : (highlight ? AppColors.g4 : AppColors.g2);
+    final borderColor = _hmWrong
+        ? AppColors.red
+        : (highlight ? AppColors.g4 : AppColors.g2);
     return Container(
       width: 48,
       height: 48,
@@ -680,11 +738,14 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
       decoration: BoxDecoration(
         border: Border.all(color: borderColor, width: highlight ? 2 : 1),
       ),
-      child: Text(char ?? '_',
-          style: AppText.mono(
-              size: 24,
-              color: char != null ? AppColors.g4 : AppColors.g1,
-              weight: FontWeight.w700)),
+      child: Text(
+        char ?? '_',
+        style: AppText.mono(
+          size: 24,
+          color: char != null ? AppColors.g4 : AppColors.g1,
+          weight: FontWeight.w700,
+        ),
+      ),
     );
   }
 
@@ -716,9 +777,14 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
         margin: const EdgeInsets.symmetric(horizontal: 3),
         alignment: Alignment.center,
         decoration: BoxDecoration(border: Border.all(color: AppColors.g2)),
-        child: Text(label,
-            style: AppText.mono(
-                size: 14, color: AppColors.g4, weight: FontWeight.w600)),
+        child: Text(
+          label,
+          style: AppText.mono(
+            size: 14,
+            color: AppColors.g4,
+            weight: FontWeight.w600,
+          ),
+        ),
       ),
     );
   }
@@ -746,27 +812,30 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
   }
 
   Widget _matchContent() => Column(
-        children: [
-          Text('$_target', style: AppText.bigTarget()),
-          const SizedBox(height: 36),
-          BitRow(
-              bits: _bits,
-              onToggle: _toggleBit,
-              enabled: !_solved && !_failed,
-              glowing: _solved),
-          if (!_solved && !_failed) ...[
-            const SizedBox(height: 20),
-            GestureDetector(
-              onTap: _triggerFail,
-              child: Text('GIVE UP →',
-                  style: AppText.mono(size: 11, color: AppColors.g1)),
-            ),
-          ],
-        ],
-      );
+    children: [
+      Text('$_target', style: AppText.bigTarget()),
+      const SizedBox(height: 36),
+      BitRow(
+        bits: _bits,
+        onToggle: _toggleBit,
+        enabled: !_solved && !_failed,
+        glowing: _solved,
+      ),
+      if (!_solved && !_failed) ...[
+        const SizedBox(height: 20),
+        GestureDetector(
+          onTap: _triggerFail,
+          child: Text(
+            'GIVE UP →',
+            style: AppText.mono(size: 11, color: AppColors.g1),
+          ),
+        ),
+      ],
+    ],
+  );
 
   Widget _reverseContent() {
-    final bits = _toBits(_target, _qBits);
+    final bits = intToBits(_target, _qBits);
     return Column(
       children: [
         BitRow(bits: bits, onToggle: (_) {}, enabled: false, glowing: _solved),
@@ -774,8 +843,10 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
         _revDisplay(),
         if (!_solved && !_failed && _attempts > 0) ...[
           const SizedBox(height: 6),
-          Text('ATT $_attempts / 3',
-              style: AppText.mono(size: 10, color: AppColors.red)),
+          Text(
+            'ATT $_attempts / 3',
+            style: AppText.mono(size: 10, color: AppColors.red),
+          ),
         ],
         const SizedBox(height: 20),
         if (!_solved && !_failed)
@@ -789,12 +860,14 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
     final color = _failed
         ? AppColors.red
         : _revWrong
-            ? AppColors.red
-            : _revEntry.isEmpty
-                ? AppColors.g1
-                : AppColors.g4;
-    return Text(text,
-        style: AppText.mono(size: 52, color: color, weight: FontWeight.w700));
+        ? AppColors.red
+        : _revEntry.isEmpty
+        ? AppColors.g1
+        : AppColors.g4;
+    return Text(
+      text,
+      style: AppText.mono(size: 52, color: color, weight: FontWeight.w700),
+    );
   }
 
   Widget _binaryFeedback() {
@@ -803,18 +876,22 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text('FAILED',
-              style: AppText.label().copyWith(
-                  fontSize: 20,
-                  letterSpacing: 8,
-                  color: AppColors.red,
-                  shadows: AppGlow.red
-                      .map((s) => Shadow(
-                          color: s.color, blurRadius: s.blurRadius))
-                      .toList())),
+          Text(
+            'FAILED',
+            style: AppText.label().copyWith(
+              fontSize: 20,
+              letterSpacing: 8,
+              color: AppColors.red,
+              shadows: AppGlow.red
+                  .map((s) => Shadow(color: s.color, blurRadius: s.blurRadius))
+                  .toList(),
+            ),
+          ),
           const SizedBox(height: 8),
-          Text('correct: $_target',
-              style: AppText.mono(size: 11, color: AppColors.g2)),
+          Text(
+            'correct: $_target',
+            style: AppText.mono(size: 11, color: AppColors.g2),
+          ),
         ],
       );
     }
@@ -826,9 +903,10 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
           scale: _scaleAnim,
           child: FadeTransition(
             opacity: _pulseAnim,
-            child: Text('CORRECT',
-                style:
-                    AppText.label().copyWith(fontSize: 20, letterSpacing: 8)),
+            child: Text(
+              'CORRECT',
+              style: AppText.label().copyWith(fontSize: 20, letterSpacing: 8),
+            ),
           ),
         ),
         const SizedBox(height: 12),
@@ -856,19 +934,24 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
               _hwLetterBoxes(),
               const SizedBox(height: 12),
               SizedBox(
-                  height: 20,
-                  child: _solved
-                      ? Text('CORRECT',
-                          style: AppText.mono(size: 13, color: AppColors.g4))
-                      : _failed
-                          ? Text('FAILED',
-                              style: AppText.mono(
-                                  size: 13, color: AppColors.red))
-                          : _attempts > 0
-                              ? Text('ATT $_attempts / 3',
-                                  style: AppText.mono(
-                                      size: 10, color: AppColors.red))
-                              : null),
+                height: 20,
+                child: _solved
+                    ? Text(
+                        'CORRECT',
+                        style: AppText.mono(size: 13, color: AppColors.g4),
+                      )
+                    : _failed
+                    ? Text(
+                        'FAILED',
+                        style: AppText.mono(size: 13, color: AppColors.red),
+                      )
+                    : _attempts > 0
+                    ? Text(
+                        'ATT $_attempts / 3',
+                        style: AppText.mono(size: 10, color: AppColors.red),
+                      )
+                    : null,
+              ),
             ],
           ),
         ),
@@ -880,7 +963,8 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
           child: (_solved || _failed)
               ? _nextButton(
                   key: const ValueKey('next'),
-                  isLast: _current + 1 >= _total)
+                  isLast: _current + 1 >= _total,
+                )
               : const SizedBox(height: 46, key: ValueKey('ph')),
         ),
         SizedBox(height: MediaQuery.of(context).padding.bottom + 10),
@@ -894,60 +978,70 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
       spacing: 10,
       runSpacing: 6,
       children: _hwCachedHexPairs
-          .map((p) => Text(p,
+          .map(
+            (p) => Text(
+              p,
               style: AppText.mono(
-                  size: 20, color: AppColors.amber, weight: FontWeight.w600)))
+                size: 20,
+                color: AppColors.amber,
+                weight: FontWeight.w600,
+              ),
+            ),
+          )
           .toList(),
     );
   }
 
   Widget _hwLetterBoxes() {
     if (_word.isEmpty) return const SizedBox.shrink();
-    return LayoutBuilder(builder: (ctx, constraints) {
-      final boxSlot =
-          (constraints.maxWidth / _word.length).clamp(0.0, 50.0);
-      final boxW = (boxSlot - 4.0).clamp(0.0, 46.0);
-      final fontSize = (boxW * 0.45).clamp(10.0, 18.0);
+    return LayoutBuilder(
+      builder: (ctx, constraints) {
+        final boxSlot = (constraints.maxWidth / _word.length).clamp(0.0, 50.0);
+        final boxW = (boxSlot - 4.0).clamp(0.0, 46.0);
+        final fontSize = (boxW * 0.45).clamp(10.0, 18.0);
 
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(_word.length, (i) {
-          final isRev = i < _hwRevealed;
-          final isCur = i == _hwRevealed && !_solved;
-          final letter = isRev ? _word[i].toUpperCase() : '';
-          final borderColor = isRev
-              ? AppColors.g3
-              : (isCur && _hwWrong)
-                  ? AppColors.red
-                  : isCur
-                      ? AppColors.g2
-                      : AppColors.g1;
-          final textColor = isRev
-              ? AppColors.g4
-              : (isCur && _hwWrong)
-                  ? AppColors.red
-                  : isCur
-                      ? AppColors.g2
-                      : AppColors.g1;
-          return Container(
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-            width: boxW,
-            height: 40,
-            decoration: BoxDecoration(
-              border:
-                  Border.all(color: borderColor, width: isCur ? 1.5 : 1),
-              boxShadow: isRev ? AppGlow.sm : null,
-            ),
-            alignment: Alignment.center,
-            child: Text(letter,
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(_word.length, (i) {
+            final isRev = i < _hwRevealed;
+            final isCur = i == _hwRevealed && !_solved;
+            final letter = isRev ? _word[i].toUpperCase() : '';
+            final borderColor = isRev
+                ? AppColors.g3
+                : (isCur && _hwWrong)
+                ? AppColors.red
+                : isCur
+                ? AppColors.g2
+                : AppColors.g1;
+            final textColor = isRev
+                ? AppColors.g4
+                : (isCur && _hwWrong)
+                ? AppColors.red
+                : isCur
+                ? AppColors.g2
+                : AppColors.g1;
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              width: boxW,
+              height: 40,
+              decoration: BoxDecoration(
+                border: Border.all(color: borderColor, width: isCur ? 1.5 : 1),
+                boxShadow: isRev ? AppGlow.sm : null,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                letter,
                 style: AppText.mono(
-                    size: fontSize,
-                    color: textColor,
-                    weight: FontWeight.w700)),
-          );
-        }),
-      );
-    });
+                  size: fontSize,
+                  color: textColor,
+                  weight: FontWeight.w700,
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
   }
 
   // ── Shared widgets ─────────────────────────────────────────────
@@ -955,14 +1049,16 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
   Widget _progressGrid() {
     // Ten cells at the preferred 24px plus margins need 300px, more than a
     // 320px phone leaves after the page padding. Shrink the cells to fit.
-    return LayoutBuilder(builder: (context, constraints) {
-      const margin = 3.0;
-      final slot = constraints.maxWidth.isFinite
-          ? constraints.maxWidth / _total
-          : 24.0 + margin * 2;
-      final cell = (slot - margin * 2).clamp(14.0, 24.0).toDouble();
-      return _progressRow(cell, margin);
-    });
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const margin = 3.0;
+        final slot = constraints.maxWidth.isFinite
+            ? constraints.maxWidth / _total
+            : 24.0 + margin * 2;
+        final cell = (slot - margin * 2).clamp(14.0, 24.0).toDouble();
+        return _progressRow(cell, margin);
+      },
+    );
   }
 
   Widget _progressRow(double cell, double margin) {
@@ -992,28 +1088,42 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
         } else if (isCurrent && _failed) {
           borderColor = AppColors.red;
           bgColor = AppColors.red.withValues(alpha: 0.06);
-          inner = Text('✗',
-              style: AppText.mono(
-                  size: 9, color: AppColors.red, weight: FontWeight.w700));
+          inner = Text(
+            '✗',
+            style: AppText.mono(
+              size: 9,
+              color: AppColors.red,
+              weight: FontWeight.w700,
+            ),
+          );
           glow = AppGlow.red;
         } else if (isCurrent && _solved) {
           borderColor = AppColors.g4;
           bgColor = AppColors.g0;
-          inner = Text('✓',
-              style: AppText.mono(
-                  size: 9, color: AppColors.g4, weight: FontWeight.w700));
+          inner = Text(
+            '✓',
+            style: AppText.mono(
+              size: 9,
+              color: AppColors.g4,
+              weight: FontWeight.w700,
+            ),
+          );
           glow = AppGlow.sm;
         } else if (isCurrent) {
           borderColor = AppColors.g3;
           bgColor = Colors.transparent;
-          inner =
-              Text('${i + 1}', style: AppText.mono(size: 9, color: AppColors.g3));
+          inner = Text(
+            '${i + 1}',
+            style: AppText.mono(size: 9, color: AppColors.g3),
+          );
           glow = AppGlow.sm;
         } else {
           borderColor = AppColors.g1;
           bgColor = Colors.transparent;
-          inner =
-              Text('${i + 1}', style: AppText.mono(size: 8, color: AppColors.g1));
+          inner = Text(
+            '${i + 1}',
+            style: AppText.mono(size: 8, color: AppColors.g1),
+          );
           glow = null;
         }
 
@@ -1035,22 +1145,24 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
 
   Widget _modeLabel() {
     final label = switch (_mode) {
-      DailyMode.match    => 'MATCH',
-      DailyMode.reverse  => 'REVERSE',
-      DailyMode.hexWord  => 'HEX WORD',
+      DailyMode.match => 'MATCH',
+      DailyMode.reverse => 'REVERSE',
+      DailyMode.hexWord => 'HEX WORD',
       DailyMode.addition => 'ADDITION',
-      DailyMode.xor      => 'XOR',
+      DailyMode.xor => 'XOR',
       DailyMode.hexMatch => 'HEX MATCH',
     };
-    final sub =
-        _mode != DailyMode.hexWord ? '$_qBits-BIT  ·  ' : '';
+    final sub = _mode != DailyMode.hexWord ? '$_qBits-BIT  ·  ' : '';
     return Column(
       children: [
-        Text(label,
-            style: AppText.kicker(color: AppColors.g3)
-                .copyWith(letterSpacing: 3)),
-        Text('${sub}Q${_current + 1} OF $_total',
-            style: AppText.kicker(color: AppColors.g1)),
+        Text(
+          label,
+          style: AppText.kicker(color: AppColors.g3).copyWith(letterSpacing: 3),
+        ),
+        Text(
+          '${sub}Q${_current + 1} OF $_total',
+          style: AppText.kicker(color: AppColors.g1),
+        ),
       ],
     );
   }
@@ -1062,8 +1174,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
         decoration: BoxDecoration(border: Border.all(color: AppColors.g2)),
-        child:
-            Text(isLast ? 'FINISH →' : 'NEXT →', style: AppText.label()),
+        child: Text(isLast ? 'FINISH →' : 'NEXT →', style: AppText.label()),
       ),
     );
   }
@@ -1080,19 +1191,29 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
           const SizedBox(height: 8),
           Container(height: 1, color: AppColors.g1),
           const SizedBox(height: 32),
-          Text(_rank(_bestScore),
-              style: AppText.mono(
-                  size: 72, color: AppColors.g4, weight: FontWeight.w700)),
+          Text(
+            _rank(_bestScore),
+            style: AppText.mono(
+              size: 72,
+              color: AppColors.g4,
+              weight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text(_rankLabel(_bestScore),
-              style: AppText.mono(size: 11, color: AppColors.g2)),
+          Text(
+            _rankLabel(_bestScore),
+            style: AppText.mono(size: 11, color: AppColors.g2),
+          ),
           const SizedBox(height: 12),
-          Text('$_bestScore / ${_total * 10}',
-              style:
-                  AppText.hudValue(color: AppColors.g3).copyWith(fontSize: 22)),
+          Text(
+            '$_bestScore / ${_total * 10}',
+            style: AppText.hudValue(color: AppColors.g3).copyWith(fontSize: 22),
+          ),
           const SizedBox(height: 8),
-          Text('DAILY STREAK  ×$_dailyStreak',
-              style: AppText.mono(size: 13, color: AppColors.amber)),
+          Text(
+            'DAILY STREAK  ×$_dailyStreak',
+            style: AppText.mono(size: 13, color: AppColors.amber),
+          ),
           const SizedBox(height: 48),
           Text('NEXT CHALLENGE', style: AppText.kicker()),
           const SizedBox(height: 8),
@@ -1101,10 +1222,10 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-              decoration:
-                  BoxDecoration(border: Border.all(color: AppColors.g2)),
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: AppColors.g2),
+              ),
               child: Text('BACK TO MENU', style: AppText.label()),
             ),
           ),
@@ -1132,30 +1253,41 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(rank,
-                  style: AppText.mono(
-                      size: 72,
-                      color: AppColors.g4,
-                      weight: FontWeight.w700)),
+              Text(
+                rank,
+                style: AppText.mono(
+                  size: 72,
+                  color: AppColors.g4,
+                  weight: FontWeight.w700,
+                ),
+              ),
               const SizedBox(width: 16),
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(label,
-                        style: AppText.mono(size: 11, color: AppColors.g2)),
+                    Text(
+                      label,
+                      style: AppText.mono(size: 11, color: AppColors.g2),
+                    ),
                     const SizedBox(height: 4),
-                    Text('$_score / ${_total * 10}',
-                        style: AppText.hudValue(color: AppColors.g3)
-                            .copyWith(fontSize: 20)),
+                    Text(
+                      '$_score / ${_total * 10}',
+                      style: AppText.hudValue(
+                        color: AppColors.g3,
+                      ).copyWith(fontSize: 20),
+                    ),
                     if (isNewBest)
-                      Text('NEW BEST',
-                          style: AppText.mono(size: 9, color: AppColors.g4)),
+                      Text(
+                        'NEW BEST',
+                        style: AppText.mono(size: 9, color: AppColors.g4),
+                      ),
                     const SizedBox(height: 4),
-                    Text('DAILY STREAK  ×$_dailyStreak',
-                        style:
-                            AppText.mono(size: 11, color: AppColors.amber)),
+                    Text(
+                      'DAILY STREAK  ×$_dailyStreak',
+                      style: AppText.mono(size: 11, color: AppColors.amber),
+                    ),
                   ],
                 ),
               ),
@@ -1167,10 +1299,10 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
           GestureDetector(
             onTap: () => Navigator.pop(context),
             child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
-              decoration:
-                  BoxDecoration(border: Border.all(color: AppColors.g2)),
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: AppColors.g2),
+              ),
               child: Text('BACK TO MENU', style: AppText.label()),
             ),
           ),
@@ -1181,11 +1313,11 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
 
   Widget _resultsGrid() {
     const modeChar = {
-      DailyMode.match:    'M',
-      DailyMode.reverse:  'R',
-      DailyMode.hexWord:  'W',
+      DailyMode.match: 'M',
+      DailyMode.reverse: 'R',
+      DailyMode.hexWord: 'W',
       DailyMode.addition: 'A',
-      DailyMode.xor:      'X',
+      DailyMode.xor: 'X',
       DailyMode.hexMatch: 'H',
     };
     return Wrap(
@@ -1198,8 +1330,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
           width: 42,
           height: 42,
           decoration: BoxDecoration(
-            border: Border.all(
-                color: isFailed ? AppColors.red : AppColors.g3),
+            border: Border.all(color: isFailed ? AppColors.red : AppColors.g3),
             color: isFailed
                 ? AppColors.red.withValues(alpha: 0.06)
                 : AppColors.g0,
@@ -1210,15 +1341,22 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                  isFailed ? '✗' : '✓',
-                  style: AppText.mono(
-                      size: 13,
-                      color: isFailed ? AppColors.red : AppColors.g4,
-                      weight: FontWeight.w700)),
-              Text(modeChar[q.mode]!,
-                  style: AppText.mono(
-                      size: 7,
-                      color: isFailed ? AppColors.red.withValues(alpha: 0.6) : AppColors.g2)),
+                isFailed ? '✗' : '✓',
+                style: AppText.mono(
+                  size: 13,
+                  color: isFailed ? AppColors.red : AppColors.g4,
+                  weight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                modeChar[q.mode]!,
+                style: AppText.mono(
+                  size: 7,
+                  color: isFailed
+                      ? AppColors.red.withValues(alpha: 0.6)
+                      : AppColors.g2,
+                ),
+              ),
             ],
           ),
         );
@@ -1243,8 +1381,7 @@ class _CountdownTimerState extends State<_CountdownTimer> {
   void initState() {
     super.initState();
     _time = _format();
-    _timer = Timer.periodic(
-        const Duration(seconds: 1), (_) {
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() => _time = _format());
     });
   }
@@ -1267,8 +1404,9 @@ class _CountdownTimerState extends State<_CountdownTimer> {
 
   @override
   Widget build(BuildContext context) {
-    return Text(_time,
-        style:
-            AppText.hudValue(color: AppColors.g3).copyWith(fontSize: 28));
+    return Text(
+      _time,
+      style: AppText.hudValue(color: AppColors.g3).copyWith(fontSize: 28),
+    );
   }
 }

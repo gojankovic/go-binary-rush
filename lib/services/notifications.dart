@@ -11,7 +11,8 @@ class Notifications {
   static const _notificationId = 1001;
   static const _channelId = 'daily_reminder';
   static const _channelName = 'Daily Reminder';
-  static const _channelDesc = 'Reminds you that today\'s daily challenge is waiting';
+  static const _channelDesc =
+      'Reminds you that today\'s daily challenge is waiting';
 
   static const _bodyPool = <String>[
     'Daily ops awaiting. Tap to engage.',
@@ -57,8 +58,10 @@ class Notifications {
 
   static Future<bool> enable(String agentName) async {
     await init();
-    final android = _plugin.resolvePlatformSpecificImplementation<
-        AndroidFlutterLocalNotificationsPlugin>();
+    final android = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     final granted = await android?.requestNotificationsPermission() ?? false;
     if (!granted) return false;
 
@@ -100,8 +103,7 @@ class Notifications {
     final prefs = await SharedPreferences.getInstance();
     final hour = prefs.getInt(prefsHour) ?? defaultHour;
     final now = tz.TZDateTime.now(tz.local);
-    var when = tz.TZDateTime(
-        tz.local, now.year, now.month, now.day, hour);
+    var when = tz.TZDateTime(tz.local, now.year, now.month, now.day, hour);
     if (!when.isAfter(now)) {
       when = when.add(const Duration(days: 1));
     }

@@ -41,99 +41,134 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
 
   Future<void> _load() async {
     final prefs = await SharedPreferences.getInstance();
-    final playerName     = (prefs.getString(PrefsKeys.playerName) ?? 'PLAYER').toUpperCase();
-    final totalCorrect   = prefs.getInt(PrefsKeys.totalCorrect) ?? 0;
-    final bestStreak     = prefs.getInt(PrefsKeys.bestStreakEver) ?? 0;
-    final matchTier      = (prefs.getInt(PrefsKeys.currentTier(GameModes.match)) ?? 0) + 1;
-    final speedBest      = bestSpeedBurstScore(prefs);
-    final dailyStreak    = prefs.getInt(PrefsKeys.dailyStreak) ?? 0;
-    final hwTotal        = prefs.getInt(PrefsKeys.hexWordTotal) ?? 0;
-    final hwPerfect      = prefs.getInt(PrefsKeys.hexWordPerfectCount) ?? 0;
-    final hwSpeedBest    = prefs.getInt(PrefsKeys.highScore(GameModes.speedHexWord)) ?? 0;
+    final playerName = (prefs.getString(PrefsKeys.playerName) ?? 'PLAYER')
+        .toUpperCase();
+    final totalCorrect = prefs.getInt(PrefsKeys.totalCorrect) ?? 0;
+    final bestStreak = prefs.getInt(PrefsKeys.bestStreakEver) ?? 0;
+    final matchTier =
+        (prefs.getInt(PrefsKeys.currentTier(GameModes.match)) ?? 0) + 1;
+    final speedBest = bestSpeedBurstScore(prefs);
+    final dailyStreak = prefs.getInt(PrefsKeys.dailyStreak) ?? 0;
+    final hwTotal = prefs.getInt(PrefsKeys.hexWordTotal) ?? 0;
+    final hwPerfect = prefs.getInt(PrefsKeys.hexWordPerfectCount) ?? 0;
+    final hwSpeedBest =
+        prefs.getInt(PrefsKeys.highScore(GameModes.speedHexWord)) ?? 0;
 
     if (!mounted) return;
     setState(() {
       _playerName = playerName;
       _achievements = [
         _Achievement(
-          glyph: '◉', name: 'FIRST BIT',
+          glyph: '◉',
+          name: 'FIRST BIT',
           sub: 'get your first correct answer',
-          goal: 1, progress: totalCorrect,
+          goal: 1,
+          progress: totalCorrect,
         ),
         _Achievement(
-          glyph: '✦', name: '50 CORRECT',
+          glyph: '✦',
+          name: '50 CORRECT',
           sub: '50 total correct answers',
-          goal: 50, progress: totalCorrect,
+          goal: 50,
+          progress: totalCorrect,
         ),
         _Achievement(
-          glyph: '✦', name: '200 CORRECT',
+          glyph: '✦',
+          name: '200 CORRECT',
           sub: '200 total correct answers',
-          goal: 200, progress: totalCorrect,
+          goal: 200,
+          progress: totalCorrect,
         ),
         _Achievement(
-          glyph: '✦', name: 'VETERAN',
+          glyph: '✦',
+          name: 'VETERAN',
           sub: '1000 total correct answers',
-          goal: 1000, progress: totalCorrect,
+          goal: 1000,
+          progress: totalCorrect,
         ),
         _Achievement(
-          glyph: '∞', name: 'STREAK ×5',
+          glyph: '∞',
+          name: 'STREAK ×5',
           sub: '5 in a row, any mode',
-          goal: 5, progress: bestStreak,
+          goal: 5,
+          progress: bestStreak,
         ),
         _Achievement(
-          glyph: '∞', name: 'STREAK ×10',
+          glyph: '∞',
+          name: 'STREAK ×10',
           sub: '10 in a row, any mode',
-          goal: 10, progress: bestStreak,
+          goal: 10,
+          progress: bestStreak,
         ),
         _Achievement(
-          glyph: '◆', name: 'TIER CLIMBER',
+          glyph: '◆',
+          name: 'TIER CLIMBER',
           sub: 'reach Tier 3 in MATCH',
-          goal: 3, progress: matchTier,
+          goal: 3,
+          progress: matchTier,
         ),
         _Achievement(
-          glyph: '⚡', name: 'SPEED DEMON',
+          glyph: '⚡',
+          name: 'SPEED DEMON',
           sub: 'solve 25+ in any Speed Burst mode',
-          goal: 25, progress: speedBest,
+          goal: 25,
+          progress: speedBest,
         ),
         _Achievement(
-          glyph: '◈', name: 'DAILY ×3',
+          glyph: '◈',
+          name: 'DAILY ×3',
           sub: '3 consecutive daily challenges',
-          goal: 3, progress: dailyStreak,
+          goal: 3,
+          progress: dailyStreak,
         ),
         _Achievement(
-          glyph: '◈', name: 'DAILY ×7',
+          glyph: '◈',
+          name: 'DAILY ×7',
           sub: 'complete daily 7 days in a row',
-          goal: 7, progress: dailyStreak,
+          goal: 7,
+          progress: dailyStreak,
         ),
         _Achievement(
-          glyph: '◈', name: 'DAILY ×30',
+          glyph: '◈',
+          name: 'DAILY ×30',
           sub: '30-day daily challenge streak',
-          goal: 30, progress: dailyStreak,
+          goal: 30,
+          progress: dailyStreak,
         ),
         _Achievement(
-          glyph: '⌨', name: 'FIRST WORD',
+          glyph: '⌨',
+          name: 'FIRST WORD',
           sub: 'solve your first HEX WORD',
-          goal: 1, progress: hwTotal,
+          goal: 1,
+          progress: hwTotal,
         ),
         _Achievement(
-          glyph: '⌨', name: 'WORDSMITH',
+          glyph: '⌨',
+          name: 'WORDSMITH',
           sub: 'solve 10 HEX WORD puzzles',
-          goal: 10, progress: hwTotal,
+          goal: 10,
+          progress: hwTotal,
         ),
         _Achievement(
-          glyph: '⌨', name: 'LEXICON',
+          glyph: '⌨',
+          name: 'LEXICON',
           sub: 'solve 50 HEX WORD puzzles',
-          goal: 50, progress: hwTotal,
+          goal: 50,
+          progress: hwTotal,
         ),
         _Achievement(
-          glyph: '⌨', name: 'CLEAN READ',
+          glyph: '⌨',
+          name: 'CLEAN READ',
           sub: 'solve a word with no wrong letters',
-          goal: 1, progress: hwPerfect,
+          goal: 1,
+          progress: hwPerfect,
         ),
         _Achievement(
-          glyph: '⚡', name: 'HEX SPEED',
+          glyph: '⚡',
+          name: 'HEX SPEED',
           sub: 'solve 10+ words in Speed Burst HEX WORD',
-          goal: 10, progress: hwSpeedBest,
+          goal: 10,
+          progress: hwSpeedBest,
         ),
       ];
       _loaded = true;
@@ -156,8 +191,10 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
           Padding(
             padding: const EdgeInsets.only(right: 16),
             child: Center(
-              child: Text('$unlocked/$total',
-                  style: AppText.mono(size: 12, color: AppColors.g2)),
+              child: Text(
+                '$unlocked/$total',
+                style: AppText.mono(size: 12, color: AppColors.g2),
+              ),
             ),
           ),
         ],
@@ -177,11 +214,14 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                   children: [
                     Text('AGENT', style: AppText.kicker(color: AppColors.g2)),
                     const SizedBox(width: 14),
-                    Text(_playerName,
-                        style: AppText.mono(
-                            size: 18,
-                            color: AppColors.g4,
-                            weight: FontWeight.w700)),
+                    Text(
+                      _playerName,
+                      style: AppText.mono(
+                        size: 18,
+                        color: AppColors.g4,
+                        weight: FontWeight.w700,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -206,13 +246,18 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Container(
                   height: 5,
-                  decoration: BoxDecoration(border: Border.all(color: AppColors.g1)),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: AppColors.g1),
+                  ),
                   child: FractionallySizedBox(
                     alignment: Alignment.centerLeft,
                     widthFactor: pct,
                     child: Container(
-                        decoration: BoxDecoration(
-                            color: AppColors.g3, boxShadow: AppGlow.sm)),
+                      decoration: BoxDecoration(
+                        color: AppColors.g3,
+                        boxShadow: AppGlow.sm,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -235,37 +280,52 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        border: Border.all(
-            color: a.unlocked ? AppColors.g2 : AppColors.g1),
+        border: Border.all(color: a.unlocked ? AppColors.g2 : AppColors.g1),
         boxShadow: a.unlocked ? AppGlow.sm : null,
       ),
       child: Row(
         children: [
-          Text(a.glyph,
-              style: TextStyle(
-                  fontSize: 20,
-                  color: color,
-                  shadows: a.unlocked
-                      ? AppGlow.sm.map((s) =>
-                              Shadow(color: s.color, blurRadius: s.blurRadius))
-                          .toList()
-                      : null)),
+          Text(
+            a.glyph,
+            style: TextStyle(
+              fontSize: 20,
+              color: color,
+              shadows: a.unlocked
+                  ? AppGlow.sm
+                        .map(
+                          (s) =>
+                              Shadow(color: s.color, blurRadius: s.blurRadius),
+                        )
+                        .toList()
+                  : null,
+            ),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(a.name, style: AppText.mono(size: 13, color: color, weight: FontWeight.w600)),
+                Text(
+                  a.name,
+                  style: AppText.mono(
+                    size: 13,
+                    color: color,
+                    weight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 2),
                 Text(a.sub, style: AppText.mono(size: 10, color: subColor)),
               ],
             ),
           ),
-          Text(progressText,
-              style: AppText.mono(
-                  size: 12,
-                  color: a.unlocked ? AppColors.g4 : AppColors.g1,
-                  weight: a.unlocked ? FontWeight.w700 : FontWeight.normal)),
+          Text(
+            progressText,
+            style: AppText.mono(
+              size: 12,
+              color: a.unlocked ? AppColors.g4 : AppColors.g1,
+              weight: a.unlocked ? FontWeight.w700 : FontWeight.normal,
+            ),
+          ),
         ],
       ),
     );

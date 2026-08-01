@@ -31,11 +31,13 @@ Future<void> bootstrap() async {
     PaletteSettings.init(),
   ]);
   if (!kIsWeb) {
-    unawaited(Notifications.init().catchError((Object e, StackTrace s) {
-      // Reminders are optional; a failure here must not take down startup, but
-      // silently dropping it makes "my reminder never fired" undiagnosable.
-      debugPrint('Notifications.init failed: $e\n$s');
-    }));
+    unawaited(
+      Notifications.init().catchError((Object e, StackTrace s) {
+        // Reminders are optional; a failure here must not take down startup, but
+        // silently dropping it makes "my reminder never fired" undiagnosable.
+        debugPrint('Notifications.init failed: $e\n$s');
+      }),
+    );
   }
 }
 
@@ -51,7 +53,10 @@ class BinaryRushApp extends StatelessWidget {
           title: 'Go Binary Rush',
           debugShowCheckedModeBanner: false,
           theme: buildAppTheme(),
-          builder: (context, child) => CrtOverlay(child: child!),
+          builder: (context, child) => ColoredBox(
+            color: Colors.black,
+            child: SafeArea(child: CrtOverlay(child: child!)),
+          ),
           home: const _AppRouter(),
         );
       },
@@ -90,7 +95,9 @@ class _AppRouterState extends State<_AppRouter> {
   Widget build(BuildContext context) {
     if (!_checked) {
       return const Scaffold(
-          backgroundColor: Colors.black, body: SizedBox.shrink());
+        backgroundColor: Colors.black,
+        body: SizedBox.shrink(),
+      );
     }
     return _needsName ? const NameEntryScreen() : const MainShell();
   }

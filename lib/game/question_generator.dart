@@ -14,14 +14,18 @@ class QuestionGenerator {
   int _tierIndex;
   int? _currentTarget;
 
-  QuestionGenerator._(SharedPreferences prefs, int tier, String mode,
-      List<Tier> tiers, int minTarget)
-      : _prefs = prefs,
-        _tiers = tiers,
-        _minTarget = minTarget,
-        _tierIndex = tier.clamp(0, tiers.length - 1),
-        _mode = mode,
-        _tierKey = PrefsKeys.currentTier(mode);
+  QuestionGenerator._(
+    SharedPreferences prefs,
+    int tier,
+    String mode,
+    List<Tier> tiers,
+    int minTarget,
+  ) : _prefs = prefs,
+      _tiers = tiers,
+      _minTarget = minTarget,
+      _tierIndex = tier.clamp(0, tiers.length - 1),
+      _mode = mode,
+      _tierKey = PrefsKeys.currentTier(mode);
 
   static Future<QuestionGenerator> create({
     String mode = 'match',
@@ -31,11 +35,12 @@ class QuestionGenerator {
     final prefs = await SharedPreferences.getInstance();
     final effectiveTiers = tiers ?? kTiers;
     return QuestionGenerator._(
-        prefs,
-        prefs.getInt(PrefsKeys.currentTier(mode)) ?? 0,
-        mode,
-        effectiveTiers,
-        minTarget);
+      prefs,
+      prefs.getInt(PrefsKeys.currentTier(mode)) ?? 0,
+      mode,
+      effectiveTiers,
+      minTarget,
+    );
   }
 
   int get currentBits => _tiers[_tierIndex].bits;
@@ -71,8 +76,9 @@ class QuestionGenerator {
     }
     if (available.isEmpty) {
       throw StateError(
-          'No target available in tier ${_tierIndex + 1}: every target is '
-          'below minTarget $_minTarget.');
+        'No target available in tier ${_tierIndex + 1}: every target is '
+        'below minTarget $_minTarget.',
+      );
     }
     final target = available[_random.nextInt(available.length)];
     _sessionSeen.add(target);
@@ -93,10 +99,11 @@ class QuestionGenerator {
 
   List<int> _available() {
     final seen = _getSeen();
-    return _tiers[_tierIndex]
-        .targets
-        .where((t) =>
-            !seen.contains(t) && !_sessionSeen.contains(t) && t >= _minTarget)
+    return _tiers[_tierIndex].targets
+        .where(
+          (t) =>
+              !seen.contains(t) && !_sessionSeen.contains(t) && t >= _minTarget,
+        )
         .toList();
   }
 

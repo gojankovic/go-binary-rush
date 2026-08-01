@@ -65,6 +65,7 @@ class _TerminalDock extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final textScale = MediaQuery.textScalerOf(context).scale(1);
     return Container(
       decoration: BoxDecoration(
         color: Colors.black,
@@ -73,7 +74,7 @@ class _TerminalDock extends StatelessWidget {
       child: SafeArea(
         top: false,
         child: SizedBox(
-          height: 52,
+          height: 52 + (textScale - 1).clamp(0, 1) * 16,
           child: Row(
             children: [
               for (int i = 0; i < _tabs.length; i++)

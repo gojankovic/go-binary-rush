@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../game/binary.dart';
 import '../game/question_generator.dart';
 import '../game/score_engine.dart';
 import '../services/haptics.dart';
@@ -84,14 +85,6 @@ class _AdditionScreenState extends State<AdditionScreen>
     super.dispose();
   }
 
-  int _computeValue(List<int> bits) {
-    int val = 0;
-    for (int i = 0; i < bits.length; i++) {
-      val += bits[i] * (1 << (bits.length - 1 - i));
-    }
-    return val;
-  }
-
   void _toggle(List<int> row, int index, void Function(List<int>) update) {
     if (_solved) return;
     Haptics.selectionClick();
@@ -99,8 +92,8 @@ class _AdditionScreenState extends State<AdditionScreen>
     newBits[index] = newBits[index] == 0 ? 1 : 0;
     update(newBits);
     setState(() {});
-    final valA = _computeValue(_bitsA);
-    final valB = _computeValue(_bitsB);
+    final valA = bitsToInt(_bitsA);
+    final valB = bitsToInt(_bitsB);
     if (valA + valB == _target && valA > 0 && valB > 0) {
       _triggerSuccess();
     }
@@ -151,8 +144,43 @@ class _AdditionScreenState extends State<AdditionScreen>
 
     final score = _scoreEngine!;
     final gen = _generator!;
-    final valA = _computeValue(_bitsA);
-    final valB = _computeValue(_bitsB);
+    final valA = bitsToInt(_bitsA);
+    final valB = bitsToInt(_bitsB);
+    final largeText = MediaQuery.textScalerOf(context).scale(1) > 1.2;
+    final content = Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: [
+          const SizedBox(height: 16),
+          GameHud(gen: gen, score: score),
+          if (largeText) const SizedBox(height: 16) else const Spacer(),
+          GamePips(lapSolved: _lapSolved, solved: _solved),
+          const SizedBox(height: 20),
+          _targetDisplay(),
+          const SizedBox(height: 28),
+          _rowSection(
+            label: 'A',
+            bits: _bitsA,
+            value: valA,
+            onToggle: (i) => _toggle(_bitsA, i, (b) => _bitsA = b),
+            hintOn: _hintAOn,
+          ),
+          const SizedBox(height: 16),
+          _rowSection(
+            label: 'B',
+            bits: _bitsB,
+            value: valB,
+            onToggle: (i) => _toggle(_bitsB, i, (b) => _bitsB = b),
+            hintOn: _hintBOn,
+          ),
+          const SizedBox(height: 20),
+          _hintArea(),
+          const SizedBox(height: 16),
+          _feedback(),
+          if (largeText) const SizedBox(height: 16) else const Spacer(),
+        ],
+      ),
+    );
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -160,8 +188,10 @@ class _AdditionScreenState extends State<AdditionScreen>
         backgroundColor: Colors.black,
         elevation: 0,
         iconTheme: IconThemeData(color: _dimGreen),
-        title: Text('GO BINARY RUSH',
-            style: TextStyle(color: _green, fontSize: 15, letterSpacing: 4)),
+        title: Text(
+          'GO BINARY RUSH',
+          style: TextStyle(color: _green, fontSize: 15, letterSpacing: 4),
+        ),
         centerTitle: false,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
@@ -170,40 +200,7 @@ class _AdditionScreenState extends State<AdditionScreen>
       ),
       body: Stack(
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(
-              children: [
-                const SizedBox(height: 16),
-                GameHud(gen: gen, score: score),
-                const Spacer(),
-                GamePips(lapSolved: _lapSolved, solved: _solved),
-                const SizedBox(height: 20),
-                _targetDisplay(),
-                const SizedBox(height: 28),
-                _rowSection(
-                  label: 'A',
-                  bits: _bitsA,
-                  value: valA,
-                  onToggle: (i) => _toggle(_bitsA, i, (b) => _bitsA = b),
-                  hintOn: _hintAOn,
-                ),
-                const SizedBox(height: 16),
-                _rowSection(
-                  label: 'B',
-                  bits: _bitsB,
-                  value: valB,
-                  onToggle: (i) => _toggle(_bitsB, i, (b) => _bitsB = b),
-                  hintOn: _hintBOn,
-                ),
-                const SizedBox(height: 20),
-                _hintArea(),
-                const SizedBox(height: 16),
-                _feedback(),
-                const Spacer(),
-              ],
-            ),
-          ),
+          largeText ? SingleChildScrollView(child: content) : content,
           IgnorePointer(
             child: AnimatedOpacity(
               opacity: flashOpacity,
@@ -229,15 +226,21 @@ class _AdditionScreenState extends State<AdditionScreen>
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text(label,
-                style: AppText.kicker(color: AppColors.g2)
-                    .copyWith(letterSpacing: 3)),
+            Text(
+              label,
+              style: AppText.kicker(
+                color: AppColors.g2,
+              ).copyWith(letterSpacing: 3),
+            ),
             if (hintOn || _solved) ...[
               const SizedBox(width: 12),
-              Text('= $value',
-                  style: AppText.mono(
-                      size: 18,
-                      color: _solved ? AppColors.g4 : AppColors.g2)),
+              Text(
+                '= $value',
+                style: AppText.mono(
+                  size: 18,
+                  color: _solved ? AppColors.g4 : AppColors.g2,
+                ),
+              ),
             ],
           ],
         ),
@@ -258,9 +261,9 @@ class _AdditionScreenState extends State<AdditionScreen>
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        if (!_hintAOn) _hintButton('SHOW A', _onHintA),
-        if (!_hintAOn && !_hintBOn) const SizedBox(width: 16),
-        if (!_hintBOn) _hintButton('SHOW B', _onHintB),
+        if (!_hintAOn) Expanded(child: _hintButton('SHOW A', _onHintA)),
+        if (!_hintAOn && !_hintBOn) const SizedBox(width: 8),
+        if (!_hintBOn) Expanded(child: _hintButton('SHOW B', _onHintB)),
       ],
     );
   }
@@ -273,10 +276,15 @@ class _AdditionScreenState extends State<AdditionScreen>
         decoration: BoxDecoration(
           border: Border.all(color: AppColors.amber.withValues(alpha: 0.6)),
         ),
-        child: Text(
-          '$label  ·  −1',
-          style: AppText.kicker(color: AppColors.amber)
-              .copyWith(letterSpacing: 2),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            '$label  ·  −1',
+            maxLines: 1,
+            style: AppText.kicker(
+              color: AppColors.amber,
+            ).copyWith(letterSpacing: 2),
+          ),
         ),
       ),
     );
@@ -307,14 +315,17 @@ class _AdditionScreenState extends State<AdditionScreen>
   Widget _targetDisplay() {
     return Column(
       children: [
-        Text('TARGET',
-            style: AppText.kicker(color: AppColors.g2).copyWith(letterSpacing: 5)),
+        Text(
+          'TARGET',
+          style: AppText.kicker(color: AppColors.g2).copyWith(letterSpacing: 5),
+        ),
         const SizedBox(height: 4),
         Text('$_target', style: AppText.bigTarget()),
         const SizedBox(height: 6),
-        Text('A > 0   +   B > 0',
-            style: AppText.kicker(color: AppColors.g2)
-                .copyWith(letterSpacing: 3)),
+        Text(
+          'A > 0   +   B > 0',
+          style: AppText.kicker(color: AppColors.g2).copyWith(letterSpacing: 3),
+        ),
       ],
     );
   }
@@ -339,10 +350,14 @@ class _AdditionScreenState extends State<AdditionScreen>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 12),
             decoration: BoxDecoration(border: Border.all(color: AppColors.g2)),
-            child: Text('NEXT  →',
-                style: AppText.mono(
-                    size: 13, color: AppColors.g3, weight: FontWeight.w600)
-                    .copyWith(letterSpacing: 4)),
+            child: Text(
+              'NEXT  →',
+              style: AppText.mono(
+                size: 13,
+                color: AppColors.g3,
+                weight: FontWeight.w600,
+              ).copyWith(letterSpacing: 4),
+            ),
           ),
         ),
       ],

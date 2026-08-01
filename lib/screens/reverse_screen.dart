@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../game/binary.dart';
 import '../game/question_generator.dart';
 import '../game/score_engine.dart';
 import '../services/haptics.dart';
@@ -71,7 +72,7 @@ class _ReverseScreenState extends State<ReverseScreen>
       _generator = gen;
       _scoreEngine = score;
       _target = target;
-      _bits = _toBits(target, gen.currentBits);
+      _bits = intToBits(target, gen.currentBits);
       _loaded = true;
     });
   }
@@ -82,14 +83,13 @@ class _ReverseScreenState extends State<ReverseScreen>
     super.dispose();
   }
 
-  List<int> _toBits(int value, int numBits) =>
-      List.generate(numBits, (i) => (value >> (numBits - 1 - i)) & 1);
-
   void _tapDigit(String d) {
     if (_solved) return;
     if (d == '⌫') {
       if (_inputEntry.isNotEmpty) {
-        setState(() => _inputEntry = _inputEntry.substring(0, _inputEntry.length - 1));
+        setState(
+          () => _inputEntry = _inputEntry.substring(0, _inputEntry.length - 1),
+        );
       }
       return;
     }
@@ -100,7 +100,10 @@ class _ReverseScreenState extends State<ReverseScreen>
       _onCorrect();
     } else if (next.length >= _target.toString().length) {
       _scoreEngine!.onWrong();
-      setState(() { _wrong = true; _inputEntry = ''; });
+      setState(() {
+        _wrong = true;
+        _inputEntry = '';
+      });
       Future.delayed(const Duration(milliseconds: 700), () {
         if (mounted) setState(() => _wrong = false);
       });
@@ -132,7 +135,7 @@ class _ReverseScreenState extends State<ReverseScreen>
     final target = gen.next();
     setState(() {
       _target = target;
-      _bits = _toBits(target, gen.currentBits);
+      _bits = intToBits(target, gen.currentBits);
       _solved = false;
       _wrong = false;
       _inputEntry = '';
@@ -158,8 +161,10 @@ class _ReverseScreenState extends State<ReverseScreen>
         backgroundColor: Colors.black,
         elevation: 0,
         iconTheme: IconThemeData(color: _dimGreen),
-        title: Text('GO BINARY RUSH',
-            style: TextStyle(color: _green, fontSize: 15, letterSpacing: 4)),
+        title: Text(
+          'GO BINARY RUSH',
+          style: TextStyle(color: _green, fontSize: 15, letterSpacing: 4),
+        ),
         centerTitle: false,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
@@ -179,8 +184,12 @@ class _ReverseScreenState extends State<ReverseScreen>
                     const SizedBox(height: 12),
                     GamePips(lapSolved: _lapSolved, solved: _solved),
                     const SizedBox(height: 16),
-                    Text('DECODE', style: AppText.kicker(color: AppColors.g2)
-                        .copyWith(letterSpacing: 5)),
+                    Text(
+                      'DECODE',
+                      style: AppText.kicker(
+                        color: AppColors.g2,
+                      ).copyWith(letterSpacing: 5),
+                    ),
                     const SizedBox(height: 16),
                     BitRow(bits: _bits, onToggle: (_) {}, enabled: false),
                   ],
@@ -193,26 +202,30 @@ class _ReverseScreenState extends State<ReverseScreen>
                 child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('DECIMAL VALUE?',
-                        style: AppText.kicker(color: AppColors.g2)
-                            .copyWith(letterSpacing: 3)),
-                    const SizedBox(height: 12),
-                    _valueDisplay(),
-                    const SizedBox(height: 8),
-                    AnimatedOpacity(
-                      opacity: _wrong ? 1.0 : 0.0,
-                      duration: const Duration(milliseconds: 100),
-                      child: Text('WRONG',
-                          style: AppText.mono(size: 13, color: _red)
-                              .copyWith(letterSpacing: 5)),
-                    ),
-                    if (_solved) ...[
-                      const SizedBox(height: 16),
-                      _feedback(),
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'DECIMAL VALUE?',
+                        style: AppText.kicker(
+                          color: AppColors.g2,
+                        ).copyWith(letterSpacing: 3),
+                      ),
+                      const SizedBox(height: 12),
+                      _valueDisplay(),
+                      const SizedBox(height: 8),
+                      AnimatedOpacity(
+                        opacity: _wrong ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 100),
+                        child: Text(
+                          'WRONG',
+                          style: AppText.mono(
+                            size: 13,
+                            color: _red,
+                          ).copyWith(letterSpacing: 5),
+                        ),
+                      ),
+                      if (_solved) ...[const SizedBox(height: 16), _feedback()],
                     ],
-                  ],
                   ),
                 ),
               ),
@@ -266,10 +279,14 @@ class _ReverseScreenState extends State<ReverseScreen>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 12),
             decoration: BoxDecoration(border: Border.all(color: AppColors.g2)),
-            child: Text('NEXT  →',
-                style: AppText.mono(size: 13, color: AppColors.g3,
-                    weight: FontWeight.w600)
-                    .copyWith(letterSpacing: 4)),
+            child: Text(
+              'NEXT  →',
+              style: AppText.mono(
+                size: 13,
+                color: AppColors.g3,
+                weight: FontWeight.w600,
+              ).copyWith(letterSpacing: 4),
+            ),
           ),
         ),
       ],

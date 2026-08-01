@@ -53,7 +53,7 @@ class NumPad extends StatelessWidget {
                               excludeSemantics: true,
                               onTap: disabled ? null : () => onTap(d),
                               child: GestureDetector(
-                                onTap: () => onTap(d),
+                                onTap: disabled ? null : () => onTap(d),
                                 child: Container(
                                   margin: EdgeInsets.symmetric(
                                     horizontal: hMargin,

@@ -34,6 +34,8 @@ class HexWordKeyboard extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        final textScale = MediaQuery.textScalerOf(context).scale(1);
+        final compact = textScale > 1.2;
         final slot = constraints.maxWidth.isFinite
             ? constraints.maxWidth / widestRow
             : _maxKeyWidth + _keyMargin * 2;
@@ -41,12 +43,16 @@ class HexWordKeyboard extends StatelessWidget {
             .clamp(18.0, _maxKeyWidth)
             .toDouble();
         final textSize = (keyWidth * 0.375).clamp(9.0, 12.0);
+        final keyHeight = compact ? 36.0 : _keyHeight;
+        final verticalPadding = compact
+            ? rowPadding.clamp(0.0, 1.0)
+            : rowPadding;
 
         return Column(
           children: _keyRows
               .map(
                 (row) => Padding(
-                  padding: EdgeInsets.symmetric(vertical: rowPadding),
+                  padding: EdgeInsets.symmetric(vertical: verticalPadding),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: row
@@ -58,13 +64,13 @@ class HexWordKeyboard extends StatelessWidget {
                             excludeSemantics: true,
                             onTap: disabled ? null : () => onTap(l),
                             child: GestureDetector(
-                              onTap: () => onTap(l),
+                              onTap: disabled ? null : () => onTap(l),
                               child: Container(
                                 margin: const EdgeInsets.symmetric(
                                   horizontal: _keyMargin,
                                 ),
                                 width: keyWidth,
-                                height: _keyHeight,
+                                height: keyHeight,
                                 decoration: BoxDecoration(
                                   border: Border.all(
                                     color: disabled

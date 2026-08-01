@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../game/binary.dart';
 import '../game/question_generator.dart';
 import '../game/score_engine.dart';
 import '../services/haptics.dart';
@@ -90,22 +91,11 @@ class _XorScreenState extends State<XorScreen>
     final b = a ^ xorTarget;
     setState(() {
       _xorTarget = xorTarget;
-      _bitsA = _toBits(a, bits);
-      _bitsB = _toBits(b, bits);
+      _bitsA = intToBits(a, bits);
+      _bitsB = intToBits(b, bits);
       _bitsC = List.filled(bits, 0);
       _solved = false;
     });
-  }
-
-  List<int> _toBits(int value, int numBits) =>
-      List.generate(numBits, (i) => (value >> (numBits - 1 - i)) & 1);
-
-  int _computeValue(List<int> bits) {
-    int val = 0;
-    for (int i = 0; i < bits.length; i++) {
-      val += bits[i] * (1 << (bits.length - 1 - i));
-    }
-    return val;
   }
 
   void _toggleC(int index) {
@@ -114,7 +104,7 @@ class _XorScreenState extends State<XorScreen>
     final newC = List<int>.from(_bitsC);
     newC[index] = newC[index] == 0 ? 1 : 0;
     setState(() => _bitsC = newC);
-    if (_computeValue(newC) == _xorTarget) _triggerSuccess();
+    if (bitsToInt(newC) == _xorTarget) _triggerSuccess();
   }
 
   void _triggerSuccess() {
@@ -151,7 +141,7 @@ class _XorScreenState extends State<XorScreen>
 
     final score = _scoreEngine!;
     final gen = _generator!;
-    final valC = _computeValue(_bitsC);
+    final valC = bitsToInt(_bitsC);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -159,8 +149,10 @@ class _XorScreenState extends State<XorScreen>
         backgroundColor: Colors.black,
         elevation: 0,
         iconTheme: IconThemeData(color: _dimGreen),
-        title: Text('GO BINARY RUSH',
-            style: TextStyle(color: _green, fontSize: 15, letterSpacing: 4)),
+        title: Text(
+          'GO BINARY RUSH',
+          style: TextStyle(color: _green, fontSize: 15, letterSpacing: 4),
+        ),
         centerTitle: false,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
@@ -178,9 +170,12 @@ class _XorScreenState extends State<XorScreen>
                 const Spacer(),
                 GamePips(lapSolved: _lapSolved, solved: _solved),
                 const SizedBox(height: 20),
-                Text('A  ⊕  B  =  C',
-                    style: AppText.kicker(color: AppColors.g2)
-                        .copyWith(letterSpacing: 4, fontSize: 13)),
+                Text(
+                  'A  ⊕  B  =  C',
+                  style: AppText.kicker(
+                    color: AppColors.g2,
+                  ).copyWith(letterSpacing: 4, fontSize: 13),
+                ),
                 const SizedBox(height: 28),
                 _fixedRow(label: 'A', bits: _bitsA),
                 const SizedBox(height: 8),
@@ -267,8 +262,9 @@ class _XorScreenState extends State<XorScreen>
         Text(
           '= $valC',
           style: AppText.mono(
-              size: 18,
-              color: _solved ? AppColors.g4 : AppColors.g2),
+            size: 18,
+            color: _solved ? AppColors.g4 : AppColors.g2,
+          ),
         ),
       ],
     );
@@ -294,10 +290,14 @@ class _XorScreenState extends State<XorScreen>
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 12),
             decoration: BoxDecoration(border: Border.all(color: AppColors.g2)),
-            child: Text('NEXT  →',
-                style: AppText.mono(
-                    size: 13, color: AppColors.g3, weight: FontWeight.w600)
-                    .copyWith(letterSpacing: 4)),
+            child: Text(
+              'NEXT  →',
+              style: AppText.mono(
+                size: 13,
+                color: AppColors.g3,
+                weight: FontWeight.w600,
+              ).copyWith(letterSpacing: 4),
+            ),
           ),
         ),
       ],

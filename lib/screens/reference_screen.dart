@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../game/binary.dart';
 import '../widgets/bit_row.dart';
 import '../theme.dart';
 
@@ -9,9 +10,6 @@ Color get _yellow => AppColors.amber;
 
 class ReferenceScreen extends StatelessWidget {
   const ReferenceScreen({super.key});
-
-  List<int> _toBits(int value, int n) =>
-      List.generate(n, (i) => (value >> (n - 1 - i)) & 1);
 
   @override
   Widget build(BuildContext context) {
@@ -48,9 +46,10 @@ class ReferenceScreen extends StatelessWidget {
             const SizedBox(height: 12),
             _asciiTable(),
             const SizedBox(height: 8),
-            Text('hex pair  →  letter  (lowercase, UTF-8)',
-                style: TextStyle(
-                    fontSize: 9, color: _dimGreen, letterSpacing: 1)),
+            Text(
+              'hex pair  →  letter  (lowercase, UTF-8)',
+              style: TextStyle(fontSize: 9, color: _dimGreen, letterSpacing: 1),
+            ),
           ],
         ),
       ),
@@ -61,9 +60,10 @@ class ReferenceScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title,
-            style: TextStyle(
-                fontSize: 10, color: _dimGreen, letterSpacing: 4)),
+        Text(
+          title,
+          style: TextStyle(fontSize: 10, color: _dimGreen, letterSpacing: 4),
+        ),
         const SizedBox(height: 6),
         Container(height: 1, color: _muteGreen),
       ],
@@ -75,9 +75,10 @@ class ReferenceScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         for (int bits = 4; bits <= 8; bits += 1) ...[
-          Text('$bits-bit',
-              style: TextStyle(
-                  fontSize: 11, color: _dimGreen, letterSpacing: 1)),
+          Text(
+            '$bits-bit',
+            style: TextStyle(fontSize: 11, color: _dimGreen, letterSpacing: 1),
+          ),
           const SizedBox(height: 6),
           BitRow(
             bits: List.filled(bits, 1),
@@ -96,7 +97,7 @@ class ReferenceScreen extends StatelessWidget {
       spacing: 24,
       runSpacing: 8,
       children: List.generate(16, (i) {
-        final bits = _toBits(i, 4);
+        final bits = intToBits(i, 4);
         final bitStr = bits.join('');
         return SizedBox(
           width: 130,
@@ -106,15 +107,18 @@ class ReferenceScreen extends StatelessWidget {
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Row(
-            children: [
-              Text(bitStr,
+              children: [
+                Text(
+                  bitStr,
                   style: TextStyle(
-                      fontSize: 15, color: _green, letterSpacing: 3)),
-              Text('  =  ',
-                  style: TextStyle(fontSize: 13, color: _dimGreen)),
-              Text('$i',
-                  style: TextStyle(fontSize: 15, color: _green)),
-            ],
+                    fontSize: 15,
+                    color: _green,
+                    letterSpacing: 3,
+                  ),
+                ),
+                Text('  =  ', style: TextStyle(fontSize: 13, color: _dimGreen)),
+                Text('$i', style: TextStyle(fontSize: 15, color: _green)),
+              ],
             ),
           ),
         );
@@ -137,12 +141,22 @@ class ReferenceScreen extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: Row(
               children: [
-                Text(hex,
-                    style: TextStyle(
-                        fontSize: 13, color: _yellow, letterSpacing: 1)),
-                Text('  $char',
-                    style: TextStyle(
-                        fontSize: 13, color: _green, letterSpacing: 1)),
+                Text(
+                  hex,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: _yellow,
+                    letterSpacing: 1,
+                  ),
+                ),
+                Text(
+                  '  $char',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: _green,
+                    letterSpacing: 1,
+                  ),
+                ),
               ],
             ),
           ),
@@ -166,8 +180,7 @@ class ReferenceScreen extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
               '${row[0]}  ⊕  ${row[1]}  =  ${row[2]}',
-              style: TextStyle(
-                  fontSize: 18, color: _green, letterSpacing: 4),
+              style: TextStyle(fontSize: 18, color: _green, letterSpacing: 4),
             ),
           ),
         const SizedBox(height: 8),

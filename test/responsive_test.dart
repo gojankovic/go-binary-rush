@@ -21,11 +21,37 @@ import 'package:binary_game/screens/xor_screen.dart';
 
 /// Logical sizes, smallest first. 320x568 is an iPhone SE / small Android and
 /// is where the layouts actually run out of room.
-const _sizes = {
-  'small 320x568': Size(320, 568),
-  'compact 360x640': Size(360, 640),
-  'regular 411x731': Size(411, 731),
-  'tablet 768x1024': Size(768, 1024),
+const _scenarios = {
+  'small 320x568': (
+    size: Size(320, 568),
+    textScale: 1.0,
+    padding: FakeViewPadding.zero,
+  ),
+  'compact 360x640': (
+    size: Size(360, 640),
+    textScale: 1.0,
+    padding: FakeViewPadding.zero,
+  ),
+  'regular 411x731': (
+    size: Size(411, 731),
+    textScale: 1.0,
+    padding: FakeViewPadding.zero,
+  ),
+  'tablet 768x1024': (
+    size: Size(768, 1024),
+    textScale: 1.0,
+    padding: FakeViewPadding.zero,
+  ),
+  'small 320x568 at 1.5x text': (
+    size: Size(320, 568),
+    textScale: 1.5,
+    padding: FakeViewPadding.zero,
+  ),
+  'compact Android with system bars': (
+    size: Size(360, 640),
+    textScale: 1.0,
+    padding: FakeViewPadding(top: 28, bottom: 24),
+  ),
 };
 
 final _screens = <String, Widget Function()>{
@@ -49,17 +75,36 @@ final _screens = <String, Widget Function()>{
 };
 
 void main() {
-  for (final size in _sizes.entries) {
+  for (final scenario in _scenarios.entries) {
     for (final screen in _screens.entries) {
-      testWidgets('${screen.key} lays out at ${size.key}', (tester) async {
-        tester.view.physicalSize = size.value;
+      testWidgets('${screen.key} lays out at ${scenario.key}', (tester) async {
+        tester.view.physicalSize = scenario.value.size;
         tester.view.devicePixelRatio = 1.0;
+        tester.view.padding = scenario.value.padding;
+        tester.view.viewPadding = scenario.value.padding;
         addTearDown(tester.view.resetPhysicalSize);
         addTearDown(tester.view.resetDevicePixelRatio);
+        addTearDown(tester.view.resetPadding);
+        addTearDown(tester.view.resetViewPadding);
 
         SharedPreferences.setMockInitialValues({'player_name': 'NEO'});
 
-        await tester.pumpWidget(MaterialApp(home: screen.value()));
+        await tester.pumpWidget(
+          MaterialApp(
+            builder: (context, child) => ColoredBox(
+              color: Colors.black,
+              child: SafeArea(
+                child: MediaQuery(
+                  data: MediaQuery.of(context).copyWith(
+                    textScaler: TextScaler.linear(scenario.value.textScale),
+                  ),
+                  child: child!,
+                ),
+              ),
+            ),
+            home: screen.value(),
+          ),
+        );
         // Two pumps: the first frame plus the one after async init resolves.
         await tester.pump();
         await tester.pump();
@@ -68,7 +113,7 @@ void main() {
         expect(
           tester.takeException(),
           isNull,
-          reason: '${screen.key} overflows at ${size.key}',
+          reason: '${screen.key} overflows at ${scenario.key}',
         );
 
         // Dispose so any countdown or feedback timers are cancelled.

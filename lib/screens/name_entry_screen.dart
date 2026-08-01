@@ -30,8 +30,7 @@ class _NameEntryScreenState extends State<NameEntryScreen> {
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
-        pageBuilder: (_, a1, a2) =>
-            const LearnScreen(isFirstLaunch: true),
+        pageBuilder: (_, a1, a2) => const LearnScreen(isFirstLaunch: true),
         transitionDuration: const Duration(milliseconds: 400),
         transitionsBuilder: (_, anim, a2, child) =>
             FadeTransition(opacity: anim, child: child),
@@ -50,13 +49,21 @@ class _NameEntryScreenState extends State<NameEntryScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Spacer(flex: 2),
-              Text('GO BINARY RUSH',
-                  style: AppText.kicker(color: AppColors.g2)
-                      .copyWith(letterSpacing: 5)),
+              Text(
+                'GO BINARY RUSH',
+                style: AppText.kicker(
+                  color: AppColors.g2,
+                ).copyWith(letterSpacing: 5),
+              ),
               const SizedBox(height: 28),
-              Text('IDENTIFY AGENT',
-                  style: AppText.mono(
-                      size: 26, color: AppColors.g4, weight: FontWeight.w700)),
+              Text(
+                'IDENTIFY AGENT',
+                style: AppText.mono(
+                  size: 26,
+                  color: AppColors.g4,
+                  weight: FontWeight.w700,
+                ),
+              ),
               const SizedBox(height: 10),
               Container(height: 1, color: AppColors.g2),
               const SizedBox(height: 36),
@@ -66,7 +73,10 @@ class _NameEntryScreenState extends State<NameEntryScreen> {
                 textCapitalization: TextCapitalization.characters,
                 maxLength: 12,
                 style: AppText.mono(
-                    size: 30, color: AppColors.g4, weight: FontWeight.w700),
+                  size: 30,
+                  color: AppColors.g4,
+                  weight: FontWeight.w700,
+                ),
                 cursorColor: AppColors.g4,
                 cursorWidth: 3,
                 decoration: InputDecoration(
@@ -74,9 +84,11 @@ class _NameEntryScreenState extends State<NameEntryScreen> {
                   hintText: 'CALLSIGN',
                   hintStyle: AppText.mono(size: 30, color: AppColors.g1),
                   enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: AppColors.g2)),
+                    borderSide: BorderSide(color: AppColors.g2),
+                  ),
                   focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: AppColors.g4, width: 2)),
+                    borderSide: BorderSide(color: AppColors.g4, width: 2),
+                  ),
                 ),
                 inputFormatters: [
                   FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_\-]')),
@@ -86,8 +98,10 @@ class _NameEntryScreenState extends State<NameEntryScreen> {
                 onSubmitted: (_) => _confirm(),
               ),
               const SizedBox(height: 8),
-              Text('max 12 chars  ·  letters, digits, _ -',
-                  style: AppText.kicker(color: AppColors.g1)),
+              Text(
+                'max 12 chars  ·  letters, digits, _ -',
+                style: AppText.kicker(color: AppColors.g1),
+              ),
               const Spacer(flex: 3),
               GestureDetector(
                 onTap: _confirm,
@@ -96,18 +110,19 @@ class _NameEntryScreenState extends State<NameEntryScreen> {
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   decoration: BoxDecoration(
                     border: Border.all(
-                        color: _hasInput ? AppColors.g4 : AppColors.g2,
-                        width: 1.5),
+                      color: _hasInput ? AppColors.g4 : AppColors.g2,
+                      width: 1.5,
+                    ),
                     boxShadow: _hasInput ? AppGlow.sm : null,
                   ),
                   alignment: Alignment.center,
                   child: Text(
                     'CONFIRM  →',
                     style: AppText.mono(
-                            size: 14,
-                            color: _hasInput ? AppColors.g4 : AppColors.g2,
-                            weight: FontWeight.w600)
-                        .copyWith(letterSpacing: 4),
+                      size: 14,
+                      color: _hasInput ? AppColors.g4 : AppColors.g2,
+                      weight: FontWeight.w600,
+                    ).copyWith(letterSpacing: 4),
                   ),
                 ),
               ),
@@ -115,8 +130,10 @@ class _NameEntryScreenState extends State<NameEntryScreen> {
               Center(
                 child: GestureDetector(
                   onTap: _confirm,
-                  child: Text('skip  →  play as PLAYER',
-                      style: AppText.kicker(color: AppColors.g1)),
+                  child: Text(
+                    'skip  →  play as PLAYER',
+                    style: AppText.kicker(color: AppColors.g1),
+                  ),
                 ),
               ),
               const Spacer(),

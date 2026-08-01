@@ -30,6 +30,8 @@ void main() {
         isButton: true,
         isToggled: true,
         hasToggledState: true,
+        hasEnabledState: true,
+        isEnabled: true,
         hasTapAction: true,
       ),
     );
@@ -40,6 +42,8 @@ void main() {
         value: '0',
         isButton: true,
         hasToggledState: true,
+        hasEnabledState: true,
+        isEnabled: true,
         hasTapAction: true,
       ),
     );
@@ -70,6 +74,33 @@ void main() {
     handle.dispose();
   });
 
+  testWidgets('read-only bits expose values without tap actions', (
+    tester,
+  ) async {
+    final handle = tester.ensureSemantics();
+    var toggled = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: BitRow(
+            bits: const [1, 0],
+            onToggle: (_) => toggled = true,
+            enabled: false,
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      tester.getSemantics(find.bySemanticsLabel('bit worth 2')),
+      matchesSemantics(label: 'bit worth 2', value: '1'),
+    );
+    await tester.tap(find.bySemanticsLabel('bit worth 2'));
+    await tester.pump();
+    expect(toggled, isFalse);
+    handle.dispose();
+  });
+
   testWidgets('keypad keys are labelled, backspace is spelled out', (
     tester,
   ) async {
@@ -87,11 +118,16 @@ void main() {
     handle.dispose();
   });
 
-  testWidgets('a disabled keypad reports its keys as disabled', (tester) async {
+  testWidgets('a disabled keypad reports and behaves as disabled', (
+    tester,
+  ) async {
     final handle = tester.ensureSemantics();
+    var tapped = false;
     await tester.pumpWidget(
       MaterialApp(
-        home: Scaffold(body: NumPad(onTap: (_) {}, disabled: true)),
+        home: Scaffold(
+          body: NumPad(onTap: (_) => tapped = true, disabled: true),
+        ),
       ),
     );
 
@@ -99,6 +135,9 @@ void main() {
       tester.getSemantics(find.bySemanticsLabel('7')),
       matchesSemantics(label: '7', isButton: true, hasEnabledState: true),
     );
+    await tester.tap(find.bySemanticsLabel('7'));
+    await tester.pump();
+    expect(tapped, isFalse);
     handle.dispose();
   });
 
@@ -113,6 +152,21 @@ void main() {
     expect(find.bySemanticsLabel('Q'), findsOneWidget);
     expect(find.bySemanticsLabel('M'), findsOneWidget);
     handle.dispose();
+  });
+
+  testWidgets('disabled hex word keys ignore physical taps', (tester) async {
+    var tapped = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: HexWordKeyboard(onTap: (_) => tapped = true, disabled: true),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Q'));
+    await tester.pump();
+    expect(tapped, isFalse);
   });
 
   testWidgets('dock tabs report which one is selected', (tester) async {

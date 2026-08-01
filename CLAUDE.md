@@ -32,6 +32,7 @@ lib/
   main.dart                    # App entry; bootstrap() loads settings before first frame
   theme.dart                   # Palettes, text styles, glows
   game/
+    binary.dart                # Shared MSB-first binary conversion helpers
     daily_challenge.dart       # Daily question model + pure schedule/streak functions
     difficulty.dart            # Tier table (bits, targets, cap)
     question_generator.dart    # Tier-aware target generation, solve-based progress
@@ -53,6 +54,7 @@ lib/
     reference_screen.dart, how_to_play_screen.dart, learn_screen.dart,
     name_entry_screen.dart
   services/
+    daily_progress_store.dart  # Awaited Daily completion persistence
     prefs_keys.dart            # Every gameplay prefs key + mode ids
     crt_settings.dart, palette_settings.dart, haptics.dart, notifications.dart
   widgets/
@@ -110,11 +112,11 @@ Hex Match uses its own tier table (`kHexTiers`). At the last tier the solved-set
 - All UI strings in English, no i18n
 - No comments unless the why is non-obvious
 - Custom tappable controls need `Semantics` with a label and their toggled/selected state
-- Layouts must survive a 320px-wide phone; `test/responsive_test.dart` sweeps every screen at four sizes
+- Layouts must survive a 320px-wide phone, 1.5x system text, and Android system-bar insets; `test/responsive_test.dart` sweeps every screen across those scenarios
 - Guard every `setState` that follows an `await` with `if (!mounted) return;`
 
 ## Testing
 
-`flutter test` covers routing, scoring, tier semantics, daily generation (against a golden captured from shipped behaviour), prefs key literals, semantics, responsive layout, and widget disposal during async init. `flutter analyze` must be clean.
+`flutter test` covers routing, scoring, binary conversion, tier semantics, daily generation and completion persistence, prefs key literals, semantics, responsive layout, and widget disposal during async init. `flutter analyze` must be clean.
 
-The repo has never been `dart format`-ed wholesale. Format only the files you touch; do not reformat unrelated lines.
+Before committing, `dart format --output=none --set-exit-if-changed lib test` must pass.

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../game/binary.dart';
 import '../game/question_generator.dart';
 import '../services/prefs_keys.dart';
 import '../game/word_list.dart';
@@ -24,30 +25,30 @@ extension _SBModeKey on _SBMode {
   /// The prefs mode id this Speed Burst mode stores under. Spelled out rather
   /// than derived from [name] so the on-disk ids live in one registry.
   String get prefsMode => const {
-        _SBMode.match:   GameModes.speedMatch,
-        _SBMode.reverse: GameModes.speedReverse,
-        _SBMode.addition:GameModes.speedAddition,
-        _SBMode.xor:     GameModes.speedXor,
-        _SBMode.hexWord: GameModes.speedHexWord,
-      }[this]!;
+    _SBMode.match: GameModes.speedMatch,
+    _SBMode.reverse: GameModes.speedReverse,
+    _SBMode.addition: GameModes.speedAddition,
+    _SBMode.xor: GameModes.speedXor,
+    _SBMode.hexWord: GameModes.speedHexWord,
+  }[this]!;
 }
 
 extension _SBModeLabel on _SBMode {
   String get label => const {
-        _SBMode.match:   'MATCH',
-        _SBMode.reverse: 'REVERSE',
-        _SBMode.addition:'ADDITION',
-        _SBMode.xor:     'XOR',
-        _SBMode.hexWord: 'HEX WORD',
-      }[this]!;
+    _SBMode.match: 'MATCH',
+    _SBMode.reverse: 'REVERSE',
+    _SBMode.addition: 'ADDITION',
+    _SBMode.xor: 'XOR',
+    _SBMode.hexWord: 'HEX WORD',
+  }[this]!;
 
   String get subtitle => const {
-        _SBMode.match:   'decimal → binary',
-        _SBMode.reverse: 'binary → decimal',
-        _SBMode.addition:'row_a + row_b = target',
-        _SBMode.xor:     'a ⊕ b = ?',
-        _SBMode.hexWord: 'ascii hex → type the word',
-      }[this]!;
+    _SBMode.match: 'decimal → binary',
+    _SBMode.reverse: 'binary → decimal',
+    _SBMode.addition: 'row_a + row_b = target',
+    _SBMode.xor: 'a ⊕ b = ?',
+    _SBMode.hexWord: 'ascii hex → type the word',
+  }[this]!;
 }
 
 class SpeedBurstScreen extends StatefulWidget {
@@ -114,10 +115,13 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
   void initState() {
     super.initState();
     _flashController = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 350));
-    _flashAnim = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(parent: _flashController, curve: Curves.easeOut),
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
     );
+    _flashAnim = Tween<double>(
+      begin: 1.0,
+      end: 0.0,
+    ).animate(CurvedAnimation(parent: _flashController, curve: Curves.easeOut));
   }
 
   @override
@@ -230,13 +234,13 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
         case _SBMode.match:
           _bits = List.filled(bits, 0);
         case _SBMode.reverse:
-          _bits = _toBits(target, bits);
+          _bits = intToBits(target, bits);
         case _SBMode.addition:
           _bitsA = List.filled(bits, 0);
           _bitsB = List.filled(bits, 0);
         case _SBMode.xor:
-          _xorA = _toBits(xorSeed!, bits);
-          _xorB = _toBits(xorSeed ^ target, bits);
+          _xorA = intToBits(xorSeed!, bits);
+          _xorB = intToBits(xorSeed ^ target, bits);
           _xorC = List.filled(bits, 0);
         case _SBMode.hexWord:
           break;
@@ -288,23 +292,12 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
     });
   }
 
-  List<int> _toBits(int v, int n) =>
-      List.generate(n, (i) => (v >> (n - 1 - i)) & 1);
-
-  int _val(List<int> b) {
-    int v = 0;
-    for (int i = 0; i < b.length; i++) {
-      v += b[i] * (1 << (b.length - 1 - i));
-    }
-    return v;
-  }
-
   void _toggleMatch(int i) {
     if (_questionSolved || _finished) return;
     Haptics.selectionClick();
     final nb = List<int>.from(_bits)..[i] ^= 1;
     setState(() => _bits = nb);
-    if (_val(nb) == _target) _onCorrect();
+    if (bitsToInt(nb) == _target) _onCorrect();
   }
 
   void _toggleAddA(int i) {
@@ -312,7 +305,7 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
     Haptics.selectionClick();
     final nb = List<int>.from(_bitsA)..[i] ^= 1;
     setState(() => _bitsA = nb);
-    if (_val(nb) + _val(_bitsB) == _target) _onCorrect();
+    if (bitsToInt(nb) + bitsToInt(_bitsB) == _target) _onCorrect();
   }
 
   void _toggleAddB(int i) {
@@ -320,7 +313,7 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
     Haptics.selectionClick();
     final nb = List<int>.from(_bitsB)..[i] ^= 1;
     setState(() => _bitsB = nb);
-    if (_val(_bitsA) + _val(nb) == _target) _onCorrect();
+    if (bitsToInt(_bitsA) + bitsToInt(nb) == _target) _onCorrect();
   }
 
   void _toggleXorC(int i) {
@@ -328,14 +321,19 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
     Haptics.selectionClick();
     final nb = List<int>.from(_xorC)..[i] ^= 1;
     setState(() => _xorC = nb);
-    if (_val(nb) == _target) _onCorrect();
+    if (bitsToInt(nb) == _target) _onCorrect();
   }
 
   void _tapReverseDigit(String d) {
     if (_questionSolved || _finished) return;
     if (d == '⌫') {
       if (_reverseEntry.isNotEmpty) {
-        setState(() => _reverseEntry = _reverseEntry.substring(0, _reverseEntry.length - 1));
+        setState(
+          () => _reverseEntry = _reverseEntry.substring(
+            0,
+            _reverseEntry.length - 1,
+          ),
+        );
       }
       return;
     }
@@ -345,7 +343,10 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
       _reverseEntry = next;
       _onCorrect();
     } else if (next.length >= _target.toString().length) {
-      setState(() { _reverseWrong = true; _reverseEntry = ''; });
+      setState(() {
+        _reverseWrong = true;
+        _reverseEntry = '';
+      });
       Future.delayed(const Duration(milliseconds: 400), () {
         if (mounted) setState(() => _reverseWrong = false);
       });
@@ -364,16 +365,18 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
   }
 
   AppBar _appBar() => AppBar(
-        backgroundColor: Colors.black,
-        elevation: 0,
-        iconTheme: IconThemeData(color: _dimGreen),
-        title: Text('SPEED BURST',
-            style: TextStyle(color: _green, fontSize: 15, letterSpacing: 4)),
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Container(height: 1, color: _muteGreen),
-        ),
-      );
+    backgroundColor: Colors.black,
+    elevation: 0,
+    iconTheme: IconThemeData(color: _dimGreen),
+    title: Text(
+      'SPEED BURST',
+      style: TextStyle(color: _green, fontSize: 15, letterSpacing: 4),
+    ),
+    bottom: PreferredSize(
+      preferredSize: const Size.fromHeight(1),
+      child: Container(height: 1, color: _muteGreen),
+    ),
+  );
 
   // ── Mode select ────────────────────────────────────────────────
 
@@ -381,19 +384,29 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: _appBar(),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 24),
-            Text('SELECT MODE',
-                style: TextStyle(
-                    fontSize: 10, color: _dimGreen, letterSpacing: 5)),
+            Text(
+              'SELECT MODE',
+              style: TextStyle(
+                fontSize: 10,
+                color: _dimGreen,
+                letterSpacing: 5,
+              ),
+            ),
             const SizedBox(height: 4),
-            Text('60 SECONDS  ·  MAXIMIZE SOLVED',
-                style: TextStyle(
-                    fontSize: 10, color: _muteGreen, letterSpacing: 2)),
+            Text(
+              '60 SECONDS  ·  MAXIMIZE SOLVED',
+              style: TextStyle(
+                fontSize: 10,
+                color: _muteGreen,
+                letterSpacing: 2,
+              ),
+            ),
             const SizedBox(height: 32),
             for (final m in _SBMode.values) ...[
               _modeItem(m),
@@ -410,9 +423,10 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
       onTap: () => _startMode(m),
       child: Row(
         children: [
-          Text('[${m.index + 1}]',
-              style: TextStyle(
-                  color: _green, fontSize: 13, letterSpacing: 1)),
+          Text(
+            '[${m.index + 1}]',
+            style: TextStyle(color: _green, fontSize: 13, letterSpacing: 1),
+          ),
           const SizedBox(width: 14),
           // The longest subtitle ("row_a + row_b = target") does not fit a
           // narrow phone unless the label column can give way.
@@ -420,14 +434,24 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(m.label,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        color: _green, fontSize: 15, letterSpacing: 3)),
-                Text(m.subtitle,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        color: _dimGreen, fontSize: 10, letterSpacing: 1)),
+                Text(
+                  m.label,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: _green,
+                    fontSize: 15,
+                    letterSpacing: 3,
+                  ),
+                ),
+                Text(
+                  m.subtitle,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: _dimGreen,
+                    fontSize: 10,
+                    letterSpacing: 1,
+                  ),
+                ),
               ],
             ),
           ),
@@ -454,11 +478,14 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
           if (_questionSolved)
             IgnorePointer(
               child: Center(
-                child: Text('+1',
-                    style: TextStyle(
-                        fontSize: 52,
-                        color: _green.withValues(alpha: 0.9),
-                        fontWeight: FontWeight.bold)),
+                child: Text(
+                  '+1',
+                  style: TextStyle(
+                    fontSize: 52,
+                    color: _green.withValues(alpha: 0.9),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
           NewBestBanner(visible: _newBestFlash),
@@ -472,33 +499,49 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
       const SizedBox(height: 12),
       _timerSection(),
       const SizedBox(height: 12),
-      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Text('SOLVED  ',
-            style: TextStyle(fontSize: 10, color: _dimGreen, letterSpacing: 3)),
-        Text('$_solved', style: TextStyle(fontSize: 20, color: _green)),
-      ]),
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(
+            'SOLVED  ',
+            style: TextStyle(fontSize: 10, color: _dimGreen, letterSpacing: 3),
+          ),
+          Text('$_solved', style: TextStyle(fontSize: 20, color: _green)),
+        ],
+      ),
     ];
 
     if (_mode == _SBMode.hexWord) {
-      return Column(children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Column(children: [...hud, const SizedBox(height: 20), _hwHexDisplay(), const SizedBox(height: 14), _hwLetterBoxes()]),
-        ),
-        const Spacer(),
-        HexWordKeyboard(onTap: _tapHwLetter, disabled: _questionSolved, rowPadding: 2),
-        SizedBox(height: MediaQuery.of(context).padding.bottom + 14),
-      ]);
+      return Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(
+              children: [
+                ...hud,
+                const SizedBox(height: 20),
+                _hwHexDisplay(),
+                const SizedBox(height: 14),
+                _hwLetterBoxes(),
+              ],
+            ),
+          ),
+          const Spacer(),
+          HexWordKeyboard(
+            onTap: _tapHwLetter,
+            disabled: _questionSolved,
+            rowPadding: 2,
+          ),
+          SizedBox(height: MediaQuery.of(context).padding.bottom + 14),
+        ],
+      );
     }
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Column(children: [
-        ...hud,
-        const Spacer(),
-        _gameContent(),
-        const Spacer(),
-      ]),
+      child: Column(
+        children: [...hud, const Spacer(), _gameContent(), const Spacer()],
+      ),
     );
   }
 
@@ -506,16 +549,19 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
     final Color c = _timeLeft > 15
         ? _green
         : _timeLeft > 5
-            ? _yellow
-            : _red;
+        ? _yellow
+        : _red;
     return Column(
       children: [
-        Text('$_timeLeft',
-            style: TextStyle(
-                fontSize: 52,
-                color: c,
-                fontWeight: FontWeight.bold,
-                height: 1.0)),
+        Text(
+          '$_timeLeft',
+          style: TextStyle(
+            fontSize: 52,
+            color: c,
+            fontWeight: FontWeight.bold,
+            height: 1.0,
+          ),
+        ),
         const SizedBox(height: 6),
         LinearProgressIndicator(
           value: _timeLeft / 60.0,
@@ -548,189 +594,251 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
       alignment: WrapAlignment.center,
       spacing: 10,
       children: _hwCachedHexPairs
-          .map((p) => Text(p,
+          .map(
+            (p) => Text(
+              p,
               style: AppText.mono(
-                  size: 20, color: AppColors.amber, weight: FontWeight.w600)))
+                size: 20,
+                color: AppColors.amber,
+                weight: FontWeight.w600,
+              ),
+            ),
+          )
           .toList(),
     );
   }
 
   Widget _hwLetterBoxes() {
     if (_hwWord.isEmpty) return const SizedBox.shrink();
-    return LayoutBuilder(builder: (ctx, constraints) {
-      final boxSlot =
-          (constraints.maxWidth / _hwWord.length).clamp(0.0, 50.0);
-      final boxW = (boxSlot - 4.0).clamp(0.0, 46.0);
-      final fontSize = (boxW * 0.45).clamp(10.0, 18.0);
-      return Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(_hwWord.length, (i) {
-          final isRev = i < _hwRevealed;
-          final isCur = i == _hwRevealed && !_questionSolved;
-          final borderColor = isRev
-              ? AppColors.g3
-              : (isCur && _hwWrong)
-                  ? AppColors.red
-                  : isCur
-                      ? AppColors.g2
-                      : AppColors.g1;
-          return Container(
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-            width: boxW,
-            height: 40,
-            decoration: BoxDecoration(
-              border: Border.all(color: borderColor, width: isCur ? 1.5 : 1),
-              boxShadow: isRev ? AppGlow.sm : null,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              isRev ? _hwWord[i].toUpperCase() : '',
-              style: AppText.mono(
+    return LayoutBuilder(
+      builder: (ctx, constraints) {
+        final boxSlot = (constraints.maxWidth / _hwWord.length).clamp(
+          0.0,
+          50.0,
+        );
+        final boxW = (boxSlot - 4.0).clamp(0.0, 46.0);
+        final fontSize = (boxW * 0.45).clamp(10.0, 18.0);
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(_hwWord.length, (i) {
+            final isRev = i < _hwRevealed;
+            final isCur = i == _hwRevealed && !_questionSolved;
+            final borderColor = isRev
+                ? AppColors.g3
+                : (isCur && _hwWrong)
+                ? AppColors.red
+                : isCur
+                ? AppColors.g2
+                : AppColors.g1;
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 2),
+              width: boxW,
+              height: 40,
+              decoration: BoxDecoration(
+                border: Border.all(color: borderColor, width: isCur ? 1.5 : 1),
+                boxShadow: isRev ? AppGlow.sm : null,
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                isRev ? _hwWord[i].toUpperCase() : '',
+                style: AppText.mono(
                   size: fontSize,
                   color: isRev ? AppColors.g4 : borderColor,
-                  weight: FontWeight.w700),
-            ),
-          );
-        }),
-      );
-    });
+                  weight: FontWeight.w700,
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
   }
 
-  Widget _matchUI() => Column(children: [
-        Text('TARGET',
-            style:
-                TextStyle(fontSize: 11, color: _dimGreen, letterSpacing: 5)),
-        const SizedBox(height: 4),
-        Text('$_target',
-            style: TextStyle(
-                fontSize: 64,
-                color: _green,
-                fontWeight: FontWeight.bold,
-                height: 1.0)),
-        const SizedBox(height: 20),
-        BitRow(
-            bits: _bits,
-            onToggle: _toggleMatch,
-            enabled: !_questionSolved,
-            glowing: _questionSolved),
-      ]);
+  Widget _matchUI() => Column(
+    children: [
+      Text(
+        'TARGET',
+        style: TextStyle(fontSize: 11, color: _dimGreen, letterSpacing: 5),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        '$_target',
+        style: TextStyle(
+          fontSize: 64,
+          color: _green,
+          fontWeight: FontWeight.bold,
+          height: 1.0,
+        ),
+      ),
+      const SizedBox(height: 20),
+      BitRow(
+        bits: _bits,
+        onToggle: _toggleMatch,
+        enabled: !_questionSolved,
+        glowing: _questionSolved,
+      ),
+    ],
+  );
 
-  Widget _reverseUI() => Column(children: [
-        Text('DECODE',
-            style:
-                TextStyle(fontSize: 11, color: _dimGreen, letterSpacing: 5)),
-        const SizedBox(height: 16),
-        BitRow(bits: _bits, onToggle: (_) {}, enabled: false),
-        const SizedBox(height: 16),
-        Text(
-          _reverseEntry.isEmpty ? '?' : _reverseEntry,
-          style: TextStyle(
-            fontSize: 40,
-            fontWeight: FontWeight.bold,
-            color: _reverseWrong
-                ? _red
-                : (_reverseEntry.isEmpty ? _dimGreen : _green),
-          ),
+  Widget _reverseUI() => Column(
+    children: [
+      Text(
+        'DECODE',
+        style: TextStyle(fontSize: 11, color: _dimGreen, letterSpacing: 5),
+      ),
+      const SizedBox(height: 16),
+      BitRow(bits: _bits, onToggle: (_) {}, enabled: false),
+      const SizedBox(height: 16),
+      Text(
+        _reverseEntry.isEmpty ? '?' : _reverseEntry,
+        style: TextStyle(
+          fontSize: 40,
+          fontWeight: FontWeight.bold,
+          color: _reverseWrong
+              ? _red
+              : (_reverseEntry.isEmpty ? _dimGreen : _green),
         ),
-        const SizedBox(height: 12),
-        NumPad(
-          onTap: _tapReverseDigit,
-          disabled: _questionSolved,
-          keyWidth: 62,
-          keyHeight: 40,
-          hMargin: 4,
-          rowPadding: 4,
-        ),
-      ]);
+      ),
+      const SizedBox(height: 12),
+      NumPad(
+        onTap: _tapReverseDigit,
+        disabled: _questionSolved,
+        keyWidth: 62,
+        keyHeight: 40,
+        hMargin: 4,
+        rowPadding: 4,
+      ),
+    ],
+  );
 
   Widget _additionUI() {
-    final vA = _val(_bitsA), vB = _val(_bitsB);
-    return Column(children: [
-      Text('TARGET',
-          style: TextStyle(fontSize: 11, color: _dimGreen, letterSpacing: 5)),
-      const SizedBox(height: 4),
-      Text('$_target',
+    final vA = bitsToInt(_bitsA), vB = bitsToInt(_bitsB);
+    return Column(
+      children: [
+        Text(
+          'TARGET',
+          style: TextStyle(fontSize: 11, color: _dimGreen, letterSpacing: 5),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '$_target',
           style: TextStyle(
-              fontSize: 56,
-              color: _green,
-              fontWeight: FontWeight.bold,
-              height: 1.0)),
-      const SizedBox(height: 16),
-      _addRowUI('A', _bitsA, vA, _toggleAddA),
-      const SizedBox(height: 10),
-      _addRowUI('B', _bitsB, vB, _toggleAddB),
-    ]);
+            fontSize: 56,
+            color: _green,
+            fontWeight: FontWeight.bold,
+            height: 1.0,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _addRowUI('A', _bitsA, vA, _toggleAddA),
+        const SizedBox(height: 10),
+        _addRowUI('B', _bitsB, vB, _toggleAddB),
+      ],
+    );
   }
 
-  Widget _addRowUI(String lbl, List<int> bits, int v,
-      void Function(int) onToggle) {
-    return Column(children: [
-      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Text(lbl,
-            style:
-                TextStyle(fontSize: 11, color: _dimGreen, letterSpacing: 2)),
-        const SizedBox(width: 8),
-        Text('= $v',
-            style: TextStyle(fontSize: 16, color: _dimGreen)),
-      ]),
-      const SizedBox(height: 4),
-      BitRow(
+  Widget _addRowUI(
+    String lbl,
+    List<int> bits,
+    int v,
+    void Function(int) onToggle,
+  ) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              lbl,
+              style: TextStyle(
+                fontSize: 11,
+                color: _dimGreen,
+                letterSpacing: 2,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text('= $v', style: TextStyle(fontSize: 16, color: _dimGreen)),
+          ],
+        ),
+        const SizedBox(height: 4),
+        BitRow(
           bits: bits,
           onToggle: onToggle,
           enabled: !_questionSolved,
-          glowing: _questionSolved),
-    ]);
+          glowing: _questionSolved,
+        ),
+      ],
+    );
   }
 
   Widget _xorUI() {
-    final vC = _val(_xorC);
-    return Column(children: [
-      Text('A  ⊕  B  =  C',
-          style:
-              TextStyle(fontSize: 12, color: _dimGreen, letterSpacing: 3)),
-      const SizedBox(height: 14),
-      _xorRowUI('A', _xorA),
-      const SizedBox(height: 6),
-      _xorRowUI('B', _xorB),
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Container(height: 1, width: 260, color: _muteGreen),
-      ),
-      Column(children: [
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          SizedBox(
-              width: 20,
-              child: Text('C',
-                  style: TextStyle(
-                      fontSize: 11, color: _dimGreen, letterSpacing: 2))),
-          const SizedBox(width: 8),
-          Expanded(
-            child: BitRow(
-                bits: _xorC,
-                onToggle: _toggleXorC,
-                enabled: !_questionSolved,
-                glowing: _questionSolved),
-          ),
-        ]),
+    final vC = bitsToInt(_xorC);
+    return Column(
+      children: [
+        Text(
+          'A  ⊕  B  =  C',
+          style: TextStyle(fontSize: 12, color: _dimGreen, letterSpacing: 3),
+        ),
+        const SizedBox(height: 14),
+        _xorRowUI('A', _xorA),
         const SizedBox(height: 6),
-        Text('= $vC',
-            style: TextStyle(fontSize: 16, color: _dimGreen)),
-      ]),
-    ]);
+        _xorRowUI('B', _xorB),
+        Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Container(height: 1, width: 260, color: _muteGreen),
+        ),
+        Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 20,
+                  child: Text(
+                    'C',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: _dimGreen,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: BitRow(
+                    bits: _xorC,
+                    onToggle: _toggleXorC,
+                    enabled: !_questionSolved,
+                    glowing: _questionSolved,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            Text('= $vC', style: TextStyle(fontSize: 16, color: _dimGreen)),
+          ],
+        ),
+      ],
+    );
   }
 
   Widget _xorRowUI(String lbl, List<int> bits) {
-    return Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-      SizedBox(
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        SizedBox(
           width: 20,
-          child: Text(lbl,
-              style: TextStyle(
-                  fontSize: 11, color: _dimGreen, letterSpacing: 2))),
-      const SizedBox(width: 8),
-      Expanded(
-        child: BitRow(bits: bits, onToggle: (_) {}, enabled: false),
-      ),
-    ]);
+          child: Text(
+            lbl,
+            style: TextStyle(fontSize: 11, color: _dimGreen, letterSpacing: 2),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: BitRow(bits: bits, onToggle: (_) {}, enabled: false),
+        ),
+      ],
+    );
   }
 
   // ── Finished ───────────────────────────────────────────────────
@@ -743,36 +851,58 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text("TIME'S UP",
-                style: TextStyle(
-                    fontSize: 16, color: _dimGreen, letterSpacing: 6)),
+            Text(
+              "TIME'S UP",
+              style: TextStyle(
+                fontSize: 16,
+                color: _dimGreen,
+                letterSpacing: 6,
+              ),
+            ),
             const SizedBox(height: 20),
-            Text('$_solved',
-                style: TextStyle(
-                    fontSize: 96,
-                    color: _green,
-                    fontWeight: FontWeight.bold,
-                    height: 1.0)),
-            Text('SOLVED',
-                style: TextStyle(
-                    fontSize: 11, color: _dimGreen, letterSpacing: 5)),
+            Text(
+              '$_solved',
+              style: TextStyle(
+                fontSize: 96,
+                color: _green,
+                fontWeight: FontWeight.bold,
+                height: 1.0,
+              ),
+            ),
+            Text(
+              'SOLVED',
+              style: TextStyle(
+                fontSize: 11,
+                color: _dimGreen,
+                letterSpacing: 5,
+              ),
+            ),
             const SizedBox(height: 28),
             if (_newHighScore)
-              Text('NEW BEST  ▲',
-                  style: TextStyle(
-                      fontSize: 13, color: _green, letterSpacing: 4))
+              Text(
+                'NEW BEST  ▲',
+                style: TextStyle(fontSize: 13, color: _green, letterSpacing: 4),
+              )
             else
-              Text('BEST  $_highScore',
-                  style: TextStyle(
-                      fontSize: 13, color: _dimGreen, letterSpacing: 3)),
+              Text(
+                'BEST  $_highScore',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: _dimGreen,
+                  letterSpacing: 3,
+                ),
+              ),
             const SizedBox(height: 44),
             _btn('PLAY AGAIN', _green, () => _startMode(_mode)),
             const SizedBox(height: 14),
-            _btn('CHANGE MODE', _dimGreen,
-                () => setState(() {
-                      _selecting = true;
-                      _finished = false;
-                    })),
+            _btn(
+              'CHANGE MODE',
+              _dimGreen,
+              () => setState(() {
+                _selecting = true;
+                _finished = false;
+              }),
+            ),
           ],
         ),
       ),
@@ -785,9 +915,10 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 14),
         decoration: BoxDecoration(border: Border.all(color: color)),
-        child: Text(label,
-            style: TextStyle(
-                fontSize: 14, color: color, letterSpacing: 4)),
+        child: Text(
+          label,
+          style: TextStyle(fontSize: 14, color: color, letterSpacing: 4),
+        ),
       ),
     );
   }

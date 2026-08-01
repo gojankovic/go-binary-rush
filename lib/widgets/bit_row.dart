@@ -32,61 +32,67 @@ class BitRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final int n = bits.length;
 
-    return LayoutBuilder(builder: (ctx, constraints) {
-      final double fallback = _tileSize(n);
-      final double ts = constraints.maxWidth.isFinite
-          ? ((constraints.maxWidth / n) - 8).clamp(20.0, fallback)
-          : fallback;
-      final double colWidth = ts + 8;
-      final double labelSize = (ts * 0.2).clamp(10, 14);
-      final double exponentSize = (ts * 0.17).clamp(9, 12);
+    return LayoutBuilder(
+      builder: (ctx, constraints) {
+        final double fallback = _tileSize(n);
+        final double ts = constraints.maxWidth.isFinite
+            ? ((constraints.maxWidth / n) - 8).clamp(20.0, fallback)
+            : fallback;
+        final double colWidth = ts + 8;
+        final double labelSize = (ts * 0.2).clamp(10, 14);
+        final double exponentSize = (ts * 0.17).clamp(9, 12);
 
-      return Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(
-              n,
-              (i) => BitTile(
-                value: bits[i],
-                onTap: enabled ? () => onToggle(i) : () {},
-                glowing: glowing,
-                size: ts,
-                semanticLabel: 'bit worth ${1 << (n - 1 - i)}',
-              ),
-            ),
-          ),
-          if (showLabels) ...[
-            const SizedBox(height: 10),
+        return Column(
+          children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(n, (i) {
-                final int power = n - 1 - i;
-                return SizedBox(
-                  width: colWidth,
-                  child: Column(
-                    children: [
-                      Text(
-                        '${1 << power}',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                            fontSize: labelSize, color: AppColors.g2),
-                      ),
-                      Text(
-                        '2${_supers[power]}',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                            fontSize: exponentSize,
-                            color: AppColors.g1),
-                      ),
-                    ],
-                  ),
-                );
-              }),
+              children: List.generate(
+                n,
+                (i) => BitTile(
+                  value: bits[i],
+                  onTap: () => onToggle(i),
+                  enabled: enabled,
+                  glowing: glowing,
+                  size: ts,
+                  semanticLabel: 'bit worth ${1 << (n - 1 - i)}',
+                ),
+              ),
             ),
+            if (showLabels) ...[
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(n, (i) {
+                  final int power = n - 1 - i;
+                  return SizedBox(
+                    width: colWidth,
+                    child: Column(
+                      children: [
+                        Text(
+                          '${1 << power}',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: labelSize,
+                            color: AppColors.g2,
+                          ),
+                        ),
+                        Text(
+                          '2${_supers[power]}',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: exponentSize,
+                            color: AppColors.g1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ),
+            ],
           ],
-        ],
-      );
-    });
+        );
+      },
+    );
   }
 }

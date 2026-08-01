@@ -34,8 +34,10 @@ class GameHud extends StatelessWidget {
         Text('TIER', style: AppText.kicker()),
         const SizedBox(height: 2),
         Text('T${gen.currentTier}', style: AppText.hudValue()),
-        Text('${gen.tierSolvedCount}/${gen.tierCap}',
-            style: AppText.mono(size: 9, color: AppColors.g2)),
+        Text(
+          '${gen.tierSolvedCount}/${gen.tierCap}',
+          style: AppText.mono(size: 9, color: AppColors.g2),
+        ),
       ],
     );
   }
