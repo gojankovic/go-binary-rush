@@ -197,8 +197,11 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
       return;
     }
     final gen = _generator!;
-    final bits = gen.currentBits;
+    // next() applies a deferred tier advance, so the bit width must be read
+    // after it — otherwise a boundary question renders in the previous tier's
+    // width and its target cannot be represented.
     final target = gen.next();
+    final bits = gen.currentBits;
     int? xorSeed;
     if (_mode == _SBMode.xor) {
       final maxVal = (1 << bits) - 1;
