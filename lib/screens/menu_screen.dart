@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'addition_screen.dart';
+import 'bit_flip_screen.dart';
 import 'daily_challenge_screen.dart';
 import 'game_screen.dart';
 import 'hex_screen.dart';
@@ -42,6 +43,7 @@ class _MenuScreenState extends State<MenuScreen> {
         'speed': bestSpeedBurstScore(prefs),
         'hex': prefs.getInt(PrefsKeys.highScore(GameModes.hex)) ?? 0,
         'hex_word': prefs.getInt(PrefsKeys.highScore(GameModes.hexWord)) ?? 0,
+        'bit_flip': prefs.getInt(PrefsKeys.highScore(GameModes.bitFlip)) ?? 0,
       };
       _tier = (prefs.getInt(PrefsKeys.currentTier(GameModes.match)) ?? 0) + 1;
     });
@@ -105,6 +107,13 @@ class _MenuScreenState extends State<MenuScreen> {
           ),
           _ModeItem(
             index: 5,
+            name: 'BIT FLIP',
+            sub: 'reach target · minimum flips',
+            best: _bestScores['bit_flip'],
+            onTap: () => _push(const BitFlipScreen()),
+          ),
+          _ModeItem(
+            index: 6,
             name: 'SPEED BURST',
             sub: '60 second blitz',
             best: _bestScores['speed'],
@@ -112,21 +121,21 @@ class _MenuScreenState extends State<MenuScreen> {
             onTap: () => _push(const SpeedBurstScreen()),
           ),
           _ModeItem(
-            index: 6,
+            index: 7,
             name: 'HEX MATCH',
             sub: 'binary  →  hex',
             best: _bestScores['hex'],
             onTap: () => _push(const HexScreen()),
           ),
           _ModeItem(
-            index: 7,
+            index: 8,
             name: 'HEX WORD',
             sub: 'ascii hex → type the word',
             best: _bestScores['hex_word'],
             onTap: () => _push(const HexWordScreen()),
           ),
           _ModeItem(
-            index: 8,
+            index: 9,
             name: 'DAILY',
             sub: '10 questions · daily reset',
             best: null,

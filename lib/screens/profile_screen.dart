@@ -35,6 +35,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     GameModes.xor: 'XOR',
     GameModes.hex: 'HEX MATCH',
     GameModes.hexWord: 'HEX WORD',
+    GameModes.bitFlip: 'BIT FLIP',
   };
 
   static const _speedModeLabels = {
@@ -43,6 +44,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     GameModes.speedAddition: 'ADDITION',
     GameModes.speedXor: 'XOR',
     GameModes.speedHexWord: 'HEX WORD',
+    GameModes.speedBitFlip: 'BIT FLIP',
   };
 
   static Map<String, int> _read(

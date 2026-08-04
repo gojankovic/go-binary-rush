@@ -1,6 +1,6 @@
 # Go Binary Rush
 
-Fast-paced binary number game for mobile (Flutter/Dart). Eight game modes, all built around binary bit manipulation. Hacker terminal aesthetic.
+Fast-paced binary number game for mobile (Flutter/Dart). Nine game modes, all built around binary bit manipulation. Hacker terminal aesthetic.
 
 ## Tech Stack
 
@@ -33,6 +33,7 @@ lib/
   theme.dart                   # Palettes, text styles, glows
   game/
     binary.dart                # Shared MSB-first binary conversion helpers
+    bit_flip.dart              # Bit Flip question generation and optimal-move rules
     daily_challenge.dart       # Daily question model + pure schedule/streak functions
     difficulty.dart            # Tier table (bits, targets, cap)
     question_generator.dart    # Tier-aware target generation, solve-based progress
@@ -42,6 +43,7 @@ lib/
     main_shell.dart            # Bottom dock: PLAY / STATS / ACHV / REF / SET
     menu_screen.dart           # Mode list
     game_screen.dart           # Match
+    bit_flip_screen.dart       # Bit Flip
     reverse_screen.dart        # Reverse
     addition_screen.dart       # Addition
     xor_screen.dart            # XOR
@@ -84,10 +86,11 @@ The stored literals are a contract with installed builds — changing one wipes 
 | Reverse | Binary shown pre-lit, type the decimal value. |
 | Addition | Decimal target, fill two binary rows that sum to it. Each row shows its own value, the sum is not displayed. Multiple valid solutions. |
 | XOR | Rows A and B pre-filled and fixed, fill row C so `A XOR B = C`. |
+| Bit Flip | Start from a generated bit pattern and reach the decimal target. PAR is the Hamming distance; matching it earns +5 points. |
 | Hex Match | Binary shown, enter the hex value. |
 | Hex Word | ASCII hex pairs shown, type the word they spell. |
-| Speed Burst | 60-second blitz of any of Match / Reverse / Addition / XOR / Hex Word. Separate high score per mode; the menu and achievements show the best across all of them. |
-| Daily Challenge | 10 questions, same for every player on a given day, one of five rotating schedule variants. Tracks a daily streak. |
+| Speed Burst | 60-second blitz of any of Match / Reverse / Addition / XOR / Hex Word / Bit Flip. Separate high score per mode; the menu and achievements show the best across all of them. |
+| Daily Challenge | 10 questions, same for every player on a given day, one of five rotating schedule variants. The full-mix variant includes Bit Flip. Tracks a daily streak. |
 
 ## Difficulty System
 

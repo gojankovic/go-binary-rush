@@ -40,6 +40,7 @@ class HowToPlayScreen extends StatelessWidget {
                   const SizedBox(height: 12),
                   _line('base     10 pts per correct answer'),
                   _line('streak   +5 pts each consecutive answer'),
+                  _line('perfect  +5 pts in BIT FLIP'),
                   _line('         streak ×3 → 10 · 15 · 20 pts'),
                   const SizedBox(height: 28),
                   _section('MODES'),
@@ -75,20 +76,27 @@ class HowToPlayScreen extends StatelessWidget {
                   ),
                   _mode(
                     '[5]',
+                    'BIT FLIP',
+                    'start  →  target',
+                    'Flip the starting bits to reach the target.\n'
+                        'Match PAR for a perfect +5 bonus.',
+                  ),
+                  _mode(
+                    '[6]',
                     'SPEED BURST',
                     '60 second blitz',
                     'Any mode. Solve as many questions as possible\n'
                         'before time runs out. Separate best per mode.',
                   ),
                   _mode(
-                    '[6]',
+                    '[7]',
                     'HEX MATCH',
                     'binary  →  hex',
                     'Bits are shown. Enter the hexadecimal value\n'
                         '(0 – F) using the hex keyboard.',
                   ),
                   _mode(
-                    '[7]',
+                    '[8]',
                     'HEX WORD',
                     'ascii hex  →  word',
                     'Each hex pair is the ASCII code of a letter.\n'
@@ -96,10 +104,10 @@ class HowToPlayScreen extends StatelessWidget {
                         'Wrong letters cost 1 pt.',
                   ),
                   _mode(
-                    '[8]',
+                    '[9]',
                     'DAILY',
                     'one challenge per day',
-                    '10 mixed questions — MATCH, REVERSE, HEX WORD.\n'
+                    '10 mixed questions across the game modes.\n'
                         'One attempt per day. Score: S / A / B / C / D.\n'
                         'Complete daily to build your streak.',
                   ),

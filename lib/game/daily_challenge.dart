@@ -1,9 +1,10 @@
 import 'dart:math';
 
+import 'bit_flip.dart';
 import 'word_list.dart';
 
 /// Question kinds a daily challenge slot can hold.
-enum DailyMode { match, reverse, hexWord, addition, xor, hexMatch }
+enum DailyMode { match, reverse, hexWord, addition, xor, hexMatch, bitFlip }
 
 /// One slot in a schedule variant: what to ask and at which bit width.
 /// [bits] is 0 for hexWord, which is not bit-width based.
@@ -15,13 +16,15 @@ class DailySlot {
 }
 
 /// A fully resolved question for one day. Only the fields the [mode] uses are
-/// meaningful: [word] for hexWord, [xorA] for xor, [target] for everything else.
+/// meaningful: [word] for hexWord, [xorA] for xor, [startValue] for bitFlip,
+/// and [target] for everything else.
 class DailyQuestion {
   final DailyMode mode;
   final int bits;
   final int target;
   final String word;
   final int xorA;
+  final int startValue;
 
   const DailyQuestion({
     required this.mode,
@@ -29,6 +32,7 @@ class DailyQuestion {
     required this.target,
     this.word = '',
     this.xorA = 0,
+    this.startValue = 0,
   });
 }
 
@@ -97,7 +101,7 @@ const List<List<DailySlot>> kDailyScheduleVariants = [
     DailySlot(DailyMode.xor, 4),
     DailySlot(DailyMode.reverse, 5),
     DailySlot(DailyMode.hexMatch, 4),
-    DailySlot(DailyMode.match, 6),
+    DailySlot(DailyMode.bitFlip, 6),
     DailySlot(DailyMode.addition, 5),
     DailySlot(DailyMode.xor, 6),
     DailySlot(DailyMode.hexWord, 0),
@@ -175,6 +179,20 @@ DailyQuestion _buildQuestion(
         mode: slot.mode,
         bits: bits,
         target: 1 + rng.nextInt(maxVal),
+      );
+    case DailyMode.bitFlip:
+      final min = 1 << (bits - 1);
+      final target = min + rng.nextInt(maxVal - min + 1);
+      final question = generateBitFlipQuestion(
+        bits: bits,
+        target: target,
+        random: rng,
+      );
+      return DailyQuestion(
+        mode: slot.mode,
+        bits: bits,
+        target: target,
+        startValue: question.start,
       );
     case DailyMode.match:
     case DailyMode.reverse:

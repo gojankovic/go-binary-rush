@@ -36,10 +36,10 @@ class ScoreEngine {
   int _wrongsInRow = 0;
   int get wrongsInRow => _wrongsInRow;
 
-  int onCorrect() {
+  int onCorrect({int bonus = 0}) {
     _wrongsInRow = 0;
     streak++;
-    final earned = 10 + (streak - 1) * 5;
+    final earned = 10 + (streak - 1) * 5 + bonus;
     score += earned;
     if (score > highScore) {
       highScore = score;

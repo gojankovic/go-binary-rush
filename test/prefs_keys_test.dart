@@ -24,6 +24,7 @@ void main() {
       expect(PrefsKeys.highScore(GameModes.xor), 'xor_high_score');
       expect(PrefsKeys.highScore(GameModes.hex), 'hex_high_score');
       expect(PrefsKeys.highScore(GameModes.hexWord), 'hex_word_high_score');
+      expect(PrefsKeys.highScore(GameModes.bitFlip), 'bit_flip_high_score');
       expect(PrefsKeys.correctCount(GameModes.match), 'match_correct_count');
       expect(PrefsKeys.currentTier(GameModes.match), 'match_current_tier');
       expect(PrefsKeys.seenTier(GameModes.match, 2), 'match_seen_tier_2');
@@ -51,6 +52,10 @@ void main() {
       expect(
         PrefsKeys.correctCount(GameModes.speedHexWord),
         'speed_hexWord_correct_count',
+      );
+      expect(
+        PrefsKeys.highScore(GameModes.speedBitFlip),
+        'speed_bit_flip_high_score',
       );
     });
 
@@ -115,9 +120,10 @@ void main() {
         'speed_match_high_score': 12,
         'speed_xor_high_score': 31,
         'speed_hexWord_high_score': 7,
+        'speed_bit_flip_high_score': 42,
       });
       final prefs = await SharedPreferences.getInstance();
-      expect(bestSpeedBurstScore(prefs), 31);
+      expect(bestSpeedBurstScore(prefs), 42);
     });
 
     test('is zero on a fresh profile', () async {

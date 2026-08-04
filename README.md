@@ -1,6 +1,6 @@
 # Go Binary Rush
 
-Fast-paced binary number puzzle game for Android. Eight game modes, all built around binary and hex manipulation. Hacker terminal aesthetic.
+Fast-paced binary number puzzle game for Android. Nine game modes, all built around binary and hex manipulation. Hacker terminal aesthetic.
 
 ## Play
 
@@ -15,15 +15,17 @@ Fast-paced binary number puzzle game for Android. Eight game modes, all built ar
 | 2 | **REVERSE** | Binary pre-lit → type the decimal value |
 | 3 | **ADDITION** | Fill two rows so A + B = target |
 | 4 | **XOR** | Rows A and B fixed → fill C so A ⊕ B = C |
-| 5 | **SPEED BURST** | Any mode, 60-second blitz |
-| 6 | **HEX MATCH** | Binary shown → enter the hex value |
-| 7 | **HEX WORD** | ASCII hex pairs → tap letters to decode the word |
-| 8 | **DAILY** | 10 mixed questions, one per day, 3 attempts per question |
+| 5 | **BIT FLIP** | Reach a decimal target from a starting bit pattern in minimum flips |
+| 6 | **SPEED BURST** | Any mode, 60-second blitz |
+| 7 | **HEX MATCH** | Binary shown → enter the hex value |
+| 8 | **HEX WORD** | ASCII hex pairs → tap letters to decode the word |
+| 9 | **DAILY** | 10 mixed questions, one per day, 3 attempts per question |
 
 ## Scoring
 
 - **10 pts** base per correct answer
 - **+5 pts** per consecutive correct answer (streak bonus)
+- **+5 pts** for a PAR-perfect BIT FLIP solve
 - Wrong answers cost 1 pt in HEX WORD; no penalty in other modes
 - Daily Challenge: failed questions (3 wrong attempts) score 0 and are marked red
 
@@ -39,7 +41,7 @@ T5     7-bit   64–127
 T6     8-bit   128–255
 ```
 
-Daily Challenge uses a fixed schedule of 10 questions with increasing bit widths, seeded by date — everyone gets the same challenge each day.
+Daily Challenge uses a fixed schedule of 10 questions with increasing bit widths, seeded by date — everyone gets the same challenge each day. The full-mix rotation includes BIT FLIP.
 
 ## Onboarding
 
