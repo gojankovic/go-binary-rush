@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../game/binary.dart';
+import '../game/bit_flip.dart';
 import '../game/daily_challenge.dart';
 import '../services/daily_progress_store.dart';
 import '../services/prefs_keys.dart';
@@ -64,6 +65,10 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
   List<int> _curXorA = [];
   List<int> _curXorB = [];
   List<int> _curXorC = [];
+
+  // Bit Flip state
+  List<int> _bitFlipBits = [];
+  int _bitFlipMoves = 0;
 
   // HEX MATCH state
   int? _hmHighEntry;
@@ -161,6 +166,9 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
         _curXorA = intToBits(q.xorA, q.bits);
         _curXorB = intToBits(q.xorA ^ q.target, q.bits);
         _curXorC = List.filled(q.bits, 0);
+      } else if (q.mode == DailyMode.bitFlip) {
+        _bitFlipBits = intToBits(q.startValue, q.bits);
+        _bitFlipMoves = 0;
       }
     });
   }
@@ -207,6 +215,17 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
     final nb = List<int>.from(_curXorC)..[index] ^= 1;
     setState(() => _curXorC = nb);
     if (bitsToInt(nb) == _target) _triggerSuccess();
+  }
+
+  void _toggleBitFlip(int index) {
+    if (_solved || _failed) return;
+    Haptics.selectionClick();
+    final nextBits = List<int>.from(_bitFlipBits)..[index] ^= 1;
+    setState(() {
+      _bitFlipBits = nextBits;
+      _bitFlipMoves++;
+    });
+    if (bitsToInt(nextBits) == _target) _triggerSuccess();
   }
 
   // ── HEX MATCH ──────────────────────────────────────────────────
@@ -453,6 +472,8 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
         return _buildXorGame();
       case DailyMode.hexMatch:
         return _buildHexMatchGame();
+      case DailyMode.bitFlip:
+        return _buildBitFlipGame();
       case DailyMode.match:
       case DailyMode.reverse:
         return _buildBinaryGame();
@@ -494,6 +515,53 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
                 style: AppText.mono(size: 11, color: AppColors.g1),
               ),
             ),
+          const SizedBox(height: 12),
+          SizedBox(height: 60, child: _binaryFeedback()),
+          const Spacer(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBitFlipGame() {
+    final optimalMoves = hammingDistance(_question.startValue, _target);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        children: [
+          const SizedBox(height: 16),
+          _progressGrid(),
+          const Spacer(),
+          _modeLabel(),
+          const SizedBox(height: 14),
+          Text('$_target', style: AppText.bigTarget()),
+          const SizedBox(height: 8),
+          Text(
+            'START ${_question.startValue}  ·  PAR $optimalMoves',
+            style: AppText.mono(size: 11, color: AppColors.g2),
+          ),
+          const SizedBox(height: 16),
+          BitRow(
+            bits: _bitFlipBits,
+            onToggle: _toggleBitFlip,
+            enabled: !_solved && !_failed,
+            glowing: _solved,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'MOVES $_bitFlipMoves',
+            style: AppText.mono(size: 11, color: AppColors.g3),
+          ),
+          if (!_solved && !_failed) ...[
+            const SizedBox(height: 14),
+            GestureDetector(
+              onTap: _triggerFail,
+              child: Text(
+                'GIVE UP →',
+                style: AppText.mono(size: 11, color: AppColors.g1),
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           SizedBox(height: 60, child: _binaryFeedback()),
           const Spacer(),
@@ -1151,6 +1219,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
       DailyMode.addition => 'ADDITION',
       DailyMode.xor => 'XOR',
       DailyMode.hexMatch => 'HEX MATCH',
+      DailyMode.bitFlip => 'BIT FLIP',
     };
     final sub = _mode != DailyMode.hexWord ? '$_qBits-BIT  ·  ' : '';
     return Column(
@@ -1319,6 +1388,7 @@ class _DailyChallengeScreenState extends State<DailyChallengeScreen>
       DailyMode.addition: 'A',
       DailyMode.xor: 'X',
       DailyMode.hexMatch: 'H',
+      DailyMode.bitFlip: 'F',
     };
     return Wrap(
       spacing: 8,

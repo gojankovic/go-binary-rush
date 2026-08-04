@@ -23,6 +23,16 @@ void main() {
       expect(engine.streak, 3);
     });
 
+    test('a mode bonus is included without changing streak growth', () async {
+      SharedPreferences.setMockInitialValues({});
+      final engine = await ScoreEngine.create(mode: 'bit_flip');
+
+      expect(engine.onCorrect(bonus: 5), 15);
+      expect(engine.onCorrect(), 15);
+      expect(engine.score, 30);
+      expect(engine.streak, 2);
+    });
+
     test('high score is persisted under the mode key', () async {
       SharedPreferences.setMockInitialValues({});
       final engine = await ScoreEngine.create(mode: 'match');

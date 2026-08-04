@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:binary_game/screens/achievements_screen.dart';
+import 'package:binary_game/screens/bit_flip_screen.dart';
 import 'package:binary_game/screens/addition_screen.dart';
 import 'package:binary_game/screens/daily_challenge_screen.dart';
 import 'package:binary_game/screens/game_screen.dart';
@@ -62,6 +63,7 @@ final _screens = <String, Widget Function()>{
   'xor': () => const XorScreen(),
   'hex': () => const HexScreen(),
   'hexWord': () => const HexWordScreen(),
+  'bitFlip': () => const BitFlipScreen(),
   'speedBurst': () => const SpeedBurstScreen(),
   'daily': () => const DailyChallengeScreen(),
   'profile': () => const ProfileScreen(),

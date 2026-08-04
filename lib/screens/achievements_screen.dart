@@ -53,6 +53,8 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
     final hwPerfect = prefs.getInt(PrefsKeys.hexWordPerfectCount) ?? 0;
     final hwSpeedBest =
         prefs.getInt(PrefsKeys.highScore(GameModes.speedHexWord)) ?? 0;
+    final bitFlipTotal =
+        prefs.getInt(PrefsKeys.correctCount(GameModes.bitFlip)) ?? 0;
 
     if (!mounted) return;
     setState(() {
@@ -169,6 +171,20 @@ class _AchievementsScreenState extends State<AchievementsScreen> {
           sub: 'solve 10+ words in Speed Burst HEX WORD',
           goal: 10,
           progress: hwSpeedBest,
+        ),
+        _Achievement(
+          glyph: '↯',
+          name: 'FIRST FLIP',
+          sub: 'solve your first BIT FLIP puzzle',
+          goal: 1,
+          progress: bitFlipTotal,
+        ),
+        _Achievement(
+          glyph: '↯',
+          name: 'FLIP MASTER',
+          sub: 'solve 50 BIT FLIP puzzles',
+          goal: 50,
+          progress: bitFlipTotal,
         ),
       ];
       _loaded = true;

@@ -73,4 +73,50 @@ void main() {
     // Dispose so the 60s countdown timer is cancelled.
     await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
   });
+
+  testWidgets('Speed Burst Bit Flip can be solved from its generated start', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1000, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    SharedPreferences.setMockInitialValues({});
+
+    await tester.pumpWidget(const MaterialApp(home: SpeedBurstScreen()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('BIT FLIP'));
+    await tester.pump();
+    await tester.pump();
+
+    final startLine = tester
+        .widgetList<Text>(find.byType(Text))
+        .map((text) => text.data ?? '')
+        .firstWhere((text) => text.startsWith('START '));
+    final start = int.parse(
+      RegExp(r'START (\d+)  ·  PAR').firstMatch(startLine)!.group(1)!,
+    );
+    final target = tester
+        .widgetList<Text>(find.byType(Text))
+        .where((text) => text.style?.fontSize == 56)
+        .map((text) => int.parse(text.data!))
+        .single;
+    final tiles = find.byType(BitTile);
+    final width = tester.widgetList(tiles).length;
+
+    for (var i = 0; i < width; i++) {
+      final bit = 1 << (width - 1 - i);
+      if ((start & bit) != (target & bit)) {
+        await tester.tap(tiles.at(i));
+        await tester.pump();
+      }
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    expect(prefs.getInt('speed_bit_flip_correct_count'), 1);
+    expect(find.text('+1'), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpWidget(const MaterialApp(home: SizedBox.shrink()));
+  });
 }

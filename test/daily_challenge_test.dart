@@ -23,8 +23,9 @@ String _render(DateTime day) {
   ];
   for (var i = 0; i < questions.length; i++) {
     final q = questions[i];
+    final legacyModeName = q.mode == DailyMode.bitFlip ? 'match' : q.mode.name;
     lines.add(
-      '  $i ${q.mode.name} bits=${q.bits} '
+      '  $i $legacyModeName bits=${q.bits} '
       'target=${q.target} word=${q.word} xorA=${q.xorA}',
     );
   }
@@ -73,6 +74,10 @@ void main() {
               expect(q.xorA ^ q.target, lessThanOrEqualTo(maxVal));
             case DailyMode.hexMatch:
               expect(q.target, inInclusiveRange(1, maxVal));
+            case DailyMode.bitFlip:
+              expect(q.target, inInclusiveRange(1 << (q.bits - 1), maxVal));
+              expect(q.startValue, inInclusiveRange(0, maxVal));
+              expect(q.startValue, isNot(q.target));
             case DailyMode.match:
             case DailyMode.reverse:
               // Top bit set, so the row is never trivially narrow.
@@ -94,6 +99,15 @@ void main() {
       for (final variant in kDailyScheduleVariants) {
         expect(variant, hasLength(kDailyQuestionCount));
       }
+    });
+
+    test('the full-mix variant includes Bit Flip', () {
+      expect(
+        kDailyScheduleVariants[4].where(
+          (slot) => slot.mode == DailyMode.bitFlip,
+        ),
+        hasLength(1),
+      );
     });
   });
 

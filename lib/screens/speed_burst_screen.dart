@@ -3,6 +3,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../game/binary.dart';
+import '../game/bit_flip.dart';
 import '../game/question_generator.dart';
 import '../services/prefs_keys.dart';
 import '../game/word_list.dart';
@@ -19,7 +20,7 @@ Color get _muteGreen => AppColors.g1;
 Color get _yellow => AppColors.amber;
 Color get _red => AppColors.red;
 
-enum _SBMode { match, reverse, addition, xor, hexWord }
+enum _SBMode { match, reverse, addition, xor, hexWord, bitFlip }
 
 extension _SBModeKey on _SBMode {
   /// The prefs mode id this Speed Burst mode stores under. Spelled out rather
@@ -30,6 +31,7 @@ extension _SBModeKey on _SBMode {
     _SBMode.addition: GameModes.speedAddition,
     _SBMode.xor: GameModes.speedXor,
     _SBMode.hexWord: GameModes.speedHexWord,
+    _SBMode.bitFlip: GameModes.speedBitFlip,
   }[this]!;
 }
 
@@ -40,6 +42,7 @@ extension _SBModeLabel on _SBMode {
     _SBMode.addition: 'ADDITION',
     _SBMode.xor: 'XOR',
     _SBMode.hexWord: 'HEX WORD',
+    _SBMode.bitFlip: 'BIT FLIP',
   }[this]!;
 
   String get subtitle => const {
@@ -48,6 +51,7 @@ extension _SBModeLabel on _SBMode {
     _SBMode.addition: 'row_a + row_b = target',
     _SBMode.xor: 'a ⊕ b = ?',
     _SBMode.hexWord: 'ascii hex → type the word',
+    _SBMode.bitFlip: 'reach target in minimum flips',
   }[this]!;
 }
 
@@ -98,6 +102,11 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
   List<int> _xorA = [];
   List<int> _xorB = [];
   List<int> _xorC = [];
+
+  // Bit Flip
+  BitFlipQuestion? _bitFlipQuestion;
+  List<int> _bitFlipBits = [];
+  int _bitFlipMoves = 0;
 
   // HexWord
   List<String> _hwPool = [];
@@ -242,6 +251,14 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
           _xorA = intToBits(xorSeed!, bits);
           _xorB = intToBits(xorSeed ^ target, bits);
           _xorC = List.filled(bits, 0);
+        case _SBMode.bitFlip:
+          _bitFlipQuestion = generateBitFlipQuestion(
+            bits: bits,
+            target: target,
+            random: _random,
+          );
+          _bitFlipBits = _bitFlipQuestion!.startBits;
+          _bitFlipMoves = 0;
         case _SBMode.hexWord:
           break;
       }
@@ -322,6 +339,17 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
     final nb = List<int>.from(_xorC)..[i] ^= 1;
     setState(() => _xorC = nb);
     if (bitsToInt(nb) == _target) _onCorrect();
+  }
+
+  void _toggleBitFlip(int i) {
+    if (_questionSolved || _finished) return;
+    Haptics.selectionClick();
+    final nextBits = List<int>.from(_bitFlipBits)..[i] ^= 1;
+    setState(() {
+      _bitFlipBits = nextBits;
+      _bitFlipMoves++;
+    });
+    if (_bitFlipQuestion!.isSolved(nextBits)) _onCorrect();
   }
 
   void _tapReverseDigit(String d) {
@@ -583,6 +611,8 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
         return _additionUI();
       case _SBMode.xor:
         return _xorUI();
+      case _SBMode.bitFlip:
+        return _bitFlipUI();
       case _SBMode.hexWord:
         return const SizedBox.shrink();
     }
@@ -836,6 +866,45 @@ class _SpeedBurstScreenState extends State<SpeedBurstScreen>
         const SizedBox(width: 8),
         Expanded(
           child: BitRow(bits: bits, onToggle: (_) {}, enabled: false),
+        ),
+      ],
+    );
+  }
+
+  Widget _bitFlipUI() {
+    final question = _bitFlipQuestion!;
+    return Column(
+      children: [
+        Text(
+          'TARGET',
+          style: TextStyle(fontSize: 11, color: _dimGreen, letterSpacing: 5),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '${question.target}',
+          style: TextStyle(
+            fontSize: 56,
+            color: _green,
+            fontWeight: FontWeight.bold,
+            height: 1,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'START ${question.start}  ·  PAR ${question.optimalMoves}',
+          style: TextStyle(fontSize: 10, color: _dimGreen, letterSpacing: 1),
+        ),
+        const SizedBox(height: 12),
+        BitRow(
+          bits: _bitFlipBits,
+          onToggle: _toggleBitFlip,
+          enabled: !_questionSolved,
+          glowing: _questionSolved,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'MOVES $_bitFlipMoves',
+          style: TextStyle(fontSize: 11, color: _dimGreen, letterSpacing: 2),
         ),
       ],
     );

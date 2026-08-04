@@ -51,12 +51,14 @@ class GameModes {
   static const xor = 'xor';
   static const hex = 'hex';
   static const hexWord = 'hex_word';
+  static const bitFlip = 'bit_flip';
 
   static const speedMatch = 'speed_match';
   static const speedReverse = 'speed_reverse';
   static const speedAddition = 'speed_addition';
   static const speedXor = 'speed_xor';
   static const speedHexWord = 'speed_hexWord';
+  static const speedBitFlip = 'speed_bit_flip';
 
   /// Speed Burst keeps a separate high score per mode; "best" across the whole
   /// mode is the max over these.
@@ -66,6 +68,7 @@ class GameModes {
     speedAddition,
     speedXor,
     speedHexWord,
+    speedBitFlip,
   ];
 }
 
